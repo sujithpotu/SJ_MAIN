@@ -13,7 +13,6 @@ interface ItemRow {
   quantity: string;
   unit_price: string;
   product: { name: string; image_path: string | null } | null;
-  dirty: boolean;
 }
 
 export function LeadItemsEditor({ leadId }: { leadId: string }) {
@@ -34,7 +33,6 @@ export function LeadItemsEditor({ leadId }: { leadId: string }) {
         quantity: String(row.quantity),
         unit_price: String(row.unit_price),
         product: row.product,
-        dirty: false,
       }))
     );
     setLoading(false);
@@ -47,22 +45,16 @@ export function LeadItemsEditor({ leadId }: { leadId: string }) {
   );
 
   const updateLocal = (id: string, patch: Partial<ItemRow>) =>
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch, dirty: true } : i)));
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
 
-  const handleSaveRow = async (row: ItemRow) => {
-    if (Number.isNaN(Number(row.quantity)) || Number.isNaN(Number(row.unit_price))) {
-      Alert.alert('Invalid values', 'Quantity and unit price must be numbers.');
-      return;
-    }
-    const { error } = await supabase
+  // Persists on blur, so there's never an "unsaved" value that a list
+  // refresh (e.g. from adding another product) could silently discard.
+  const handleBlurSave = async (row: ItemRow) => {
+    if (Number.isNaN(Number(row.quantity)) || Number.isNaN(Number(row.unit_price))) return;
+    await supabase
       .from('lead_items')
       .update({ quantity: Number(row.quantity), unit_price: Number(row.unit_price) })
       .eq('id', row.id);
-    if (error) {
-      Alert.alert('Could not save', error.message);
-      return;
-    }
-    setItems((prev) => prev.map((i) => (i.id === row.id ? { ...i, dirty: false } : i)));
   };
 
   const handleRemoveRow = (id: string) => {
@@ -77,7 +69,7 @@ export function LeadItemsEditor({ leadId }: { leadId: string }) {
             Alert.alert('Could not remove', error.message);
             return;
           }
-          load();
+          setItems((prev) => prev.filter((i) => i.id !== id));
         },
       },
     ]);
@@ -85,17 +77,30 @@ export function LeadItemsEditor({ leadId }: { leadId: string }) {
 
   const handleAddProduct = async (product: Product) => {
     setPickerVisible(false);
-    const { error } = await supabase.from('lead_items').insert({
-      lead_id: leadId,
-      product_id: product.id,
-      quantity: 1,
-      unit_price: Number(product.price),
-    });
-    if (error) {
-      Alert.alert('Could not add product', error.message);
+    const { data, error } = await supabase
+      .from('lead_items')
+      .insert({
+        lead_id: leadId,
+        product_id: product.id,
+        quantity: 1,
+        unit_price: Number(product.price),
+      })
+      .select('id')
+      .single();
+    if (error || !data) {
+      Alert.alert('Could not add product', error?.message ?? 'Unknown error');
       return;
     }
-    load();
+    setItems((prev) => [
+      ...prev,
+      {
+        id: data.id,
+        product_id: product.id,
+        quantity: '1',
+        unit_price: String(product.price),
+        product: { name: product.name, image_path: product.image_path },
+      },
+    ]);
   };
 
   const total = items.reduce(
@@ -142,6 +147,7 @@ export function LeadItemsEditor({ leadId }: { leadId: string }) {
                 keyboardType="numeric"
                 value={item.quantity}
                 onChangeText={(v) => updateLocal(item.id, { quantity: v })}
+                onBlur={() => handleBlurSave(items.find((i) => i.id === item.id)!)}
               />
               <TextInput
                 style={[styles.input, styles.inputFlex]}
@@ -149,12 +155,8 @@ export function LeadItemsEditor({ leadId }: { leadId: string }) {
                 keyboardType="numeric"
                 value={item.unit_price}
                 onChangeText={(v) => updateLocal(item.id, { unit_price: v })}
+                onBlur={() => handleBlurSave(items.find((i) => i.id === item.id)!)}
               />
-              {item.dirty && (
-                <TouchableOpacity style={styles.saveButton} onPress={() => handleSaveRow(item)}>
-                  <Text style={styles.saveButtonText}>Save</Text>
-                </TouchableOpacity>
-              )}
             </View>
           </View>
         );
@@ -205,12 +207,5 @@ const styles = StyleSheet.create({
     color: '#0f172a',
   },
   inputFlex: { flex: 1 },
-  saveButton: {
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  saveButtonText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   total: { fontSize: 15, fontWeight: '700', color: '#0f172a', marginTop: 4 },
 });

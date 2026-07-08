@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { ProductForm, ProductFormValues } from '../../../components/ProductForm';
 import { uploadProductImage } from '../../../lib/productImages';
 import { supabase } from '../../../lib/supabase';
+import { goBackOr } from '../../../lib/navigation';
 
 export default function NewProductScreen() {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function NewProductScreen() {
       }
     }
 
-    router.back();
+    goBackOr(router, '/products');
     return null;
   };
 

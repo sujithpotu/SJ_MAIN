@@ -3,6 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../context/AuthContext';
+import { goBackOr } from '../../../lib/navigation';
 import { Account } from '../../../types/database';
 import { AccountForm, AccountFormValues } from '../../../components/AccountForm';
 
@@ -31,7 +32,7 @@ export default function AccountDetailScreen() {
   const handleSubmit = async (values: AccountFormValues) => {
     const { error } = await supabase.from('accounts').update(values).eq('id', id);
     if (error) return error.message;
-    router.back();
+    goBackOr(router, '/accounts');
     return null;
   };
 
@@ -72,7 +73,7 @@ export default function AccountDetailScreen() {
           if (error) {
             Alert.alert('Could not delete', error.message);
           } else {
-            router.back();
+            goBackOr(router, '/accounts');
           }
         },
       },

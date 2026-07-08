@@ -3,6 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../../../lib/supabase';
 import { uploadProductImage } from '../../../lib/productImages';
+import { goBackOr } from '../../../lib/navigation';
 import { Product } from '../../../types/database';
 import { ProductForm, ProductFormValues } from '../../../components/ProductForm';
 
@@ -41,7 +42,7 @@ export default function ProductDetailScreen() {
     }
     const { error } = await supabase.from('products').update(update).eq('id', id);
     if (error) return error.message;
-    router.back();
+    goBackOr(router, '/products');
     return null;
   };
 
@@ -56,7 +57,7 @@ export default function ProductDetailScreen() {
           if (error) {
             Alert.alert('Could not delete', error.message);
           } else {
-            router.back();
+            goBackOr(router, '/products');
           }
         },
       },

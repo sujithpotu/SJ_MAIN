@@ -3,6 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../context/AuthContext';
+import { goBackOr } from '../../../lib/navigation';
 import { Lead } from '../../../types/database';
 import { LeadForm, LeadFormValues } from '../../../components/LeadForm';
 import { LeadItemsEditor } from '../../../components/LeadItemsEditor';
@@ -64,7 +65,7 @@ export default function LeadDetailScreen() {
       });
     }
 
-    router.back();
+    goBackOr(router, '/leads');
     return null;
   };
 
@@ -79,7 +80,7 @@ export default function LeadDetailScreen() {
           if (error) {
             Alert.alert('Could not delete', error.message);
           } else {
-            router.back();
+            goBackOr(router, '/leads');
           }
         },
       },
