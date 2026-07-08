@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../context/AuthContext';
 import { Lead } from '../../../types/database';
 import { LeadForm, LeadFormValues } from '../../../components/LeadForm';
+import { LeadTimeline } from '../../../components/LeadTimeline';
 
 export default function LeadDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -91,6 +92,7 @@ export default function LeadDetailScreen() {
         initialAccountName={accountName}
         submitLabel="Save changes"
         onSubmit={handleSubmit}
+        footer={<LeadTimeline leadId={lead.id} />}
       />
       {profile?.role === 'manager' && (
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>

@@ -18,11 +18,12 @@ interface Props {
   initialAccountName?: string;
   submitLabel: string;
   onSubmit: (values: LeadFormValues) => Promise<string | null>;
+  footer?: React.ReactNode;
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-export function LeadForm({ initial, initialAccountName, submitLabel, onSubmit }: Props) {
+export function LeadForm({ initial, initialAccountName, submitLabel, onSubmit, footer }: Props) {
   const [accountId, setAccountId] = useState(initial?.account_id ?? '');
   const [accountName, setAccountName] = useState(initialAccountName ?? '');
   const [accounts, setAccounts] = useState<PickerItem[]>([]);
@@ -113,6 +114,8 @@ export function LeadForm({ initial, initialAccountName, submitLabel, onSubmit }:
       >
         <Text style={styles.buttonText}>{submitting ? 'Saving…' : submitLabel}</Text>
       </TouchableOpacity>
+
+      {footer}
 
       <PickerModal
         visible={pickerVisible}
