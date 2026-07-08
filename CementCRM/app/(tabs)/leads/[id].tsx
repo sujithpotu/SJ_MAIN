@@ -1,31 +1,44 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as Print from 'expo-print';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../context/AuthContext';
 import { Lead } from '../../../types/database';
 import { LeadForm, LeadFormValues } from '../../../components/LeadForm';
 import { LeadTimeline } from '../../../components/LeadTimeline';
+import { buildQuotationHtml } from '../../../lib/quotationHtml';
+
+interface LeadWithJoins extends Lead {
+  account: {
+    name: string;
+    location: string | null;
+    contact_person: string | null;
+    phone: string | null;
+  } | null;
+  product: { name: string; image_path: string | null; price: number | string } | null;
+}
 
 export default function LeadDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { profile } = useAuth();
-  const [lead, setLead] = useState<Lead | null>(null);
-  const [accountName, setAccountName] = useState<string>('');
+  const { profile, session } = useAuth();
+  const [lead, setLead] = useState<LeadWithJoins | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [printing, setPrinting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('leads')
-      .select('*, account:accounts(name)')
+      .select(
+        '*, account:accounts(name, location, contact_person, phone), product:products(name, image_path, price)'
+      )
       .eq('id', id)
       .single();
     if (error) setError(error.message);
     setLead((data as any) ?? null);
-    setAccountName((data as any)?.account?.name ?? '');
     setLoading(false);
   }, [id]);
 
@@ -41,12 +54,23 @@ export default function LeadDetailScreen() {
       .update({
         account_id: values.account_id,
         stage: values.stage,
-        product_type: values.product_type || null,
+        product_id: values.product_id || null,
         quantity: values.quantity ? Number(values.quantity) : null,
+        unit_price: values.unit_price ? Number(values.unit_price) : null,
         expected_order_date: values.expected_order_date || null,
       })
       .eq('id', id);
     if (error) return error.message;
+
+    if (lead && values.stage !== lead.stage && session) {
+      await supabase.from('lead_stage_history').insert({
+        lead_id: id,
+        stage: values.stage,
+        comment: values.stageComment || null,
+        changed_by: session.user.id,
+      });
+    }
+
     router.back();
     return null;
   };
@@ -69,6 +93,35 @@ export default function LeadDetailScreen() {
     ]);
   };
 
+  const handlePrintQuotation = async () => {
+    if (!lead) return;
+    if (!lead.product || !lead.quantity || !lead.unit_price) {
+      Alert.alert(
+        'Missing details',
+        'Set a product, quantity, and unit price on this lead before generating a quotation.'
+      );
+      return;
+    }
+    setPrinting(true);
+    try {
+      const html = buildQuotationHtml({
+        accountName: lead.account?.name ?? 'Unknown account',
+        accountLocation: lead.account?.location ?? null,
+        accountContact: lead.account?.contact_person ?? null,
+        accountPhone: lead.account?.phone ?? null,
+        productName: lead.product.name,
+        quantity: Number(lead.quantity),
+        unitPrice: Number(lead.unit_price),
+        expectedOrderDate: lead.expected_order_date,
+      });
+      await Print.printAsync({ html });
+    } catch (e: any) {
+      Alert.alert('Could not generate quotation', e.message ?? String(e));
+    } finally {
+      setPrinting(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -89,11 +142,22 @@ export default function LeadDetailScreen() {
     <View style={{ flex: 1 }}>
       <LeadForm
         initial={lead}
-        initialAccountName={accountName}
+        initialAccountName={lead.account?.name}
+        initialProductName={lead.product?.name}
+        initialProductImagePath={lead.product?.image_path}
         submitLabel="Save changes"
         onSubmit={handleSubmit}
         footer={<LeadTimeline leadId={lead.id} />}
       />
+
+      <TouchableOpacity
+        style={[styles.printButton, printing && styles.printButtonDisabled]}
+        onPress={handlePrintQuotation}
+        disabled={printing}
+      >
+        <Text style={styles.printText}>{printing ? 'Preparing…' : 'Print quotation'}</Text>
+      </TouchableOpacity>
+
       {profile?.role === 'manager' && (
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
           <Text style={styles.deleteText}>Delete lead</Text>
@@ -106,6 +170,15 @@ export default function LeadDetailScreen() {
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   error: { color: '#dc2626', fontSize: 15 },
+  printButton: {
+    marginHorizontal: 20,
+    backgroundColor: '#0f172a',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  printButtonDisabled: { opacity: 0.6 },
+  printText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   deleteButton: { alignItems: 'center', paddingVertical: 16 },
   deleteText: { color: '#dc2626', fontSize: 14, fontWeight: '600' },
 });

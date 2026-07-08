@@ -49,10 +49,20 @@ export interface Lead {
   id: string;
   account_id: string;
   stage: LeadStage;
-  product_type: string | null;
+  product_id: string | null;
   // Postgres `numeric` comes back from Supabase as a string, not a JS number.
   quantity: number | string | null;
+  unit_price: number | string | null;
   expected_order_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  image_path: string | null;
+  price: number | string;
   created_at: string;
   updated_at: string;
 }

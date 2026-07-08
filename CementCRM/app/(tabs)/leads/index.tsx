@@ -17,10 +17,11 @@ interface LeadRow {
   id: string;
   account_id: string;
   stage: LeadStage;
-  product_type: string | null;
   quantity: number | null;
+  unit_price: number | null;
   expected_order_date: string | null;
   account: { name: string } | null;
+  product: { name: string } | null;
 }
 
 const STAGE_COLORS: Record<LeadStage, string> = {
@@ -45,7 +46,9 @@ export default function LeadsScreen() {
     setError(null);
     const { data, error } = await supabase
       .from('leads')
-      .select('id, account_id, stage, product_type, quantity, expected_order_date, account:accounts(name)')
+      .select(
+        'id, account_id, stage, quantity, unit_price, expected_order_date, account:accounts(name), product:products(name)'
+      )
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -67,7 +70,7 @@ export default function LeadsScreen() {
     const q = query.trim().toLowerCase();
     if (!q) return true;
     return (
-      l.account?.name?.toLowerCase().includes(q) || l.product_type?.toLowerCase().includes(q)
+      l.account?.name?.toLowerCase().includes(q) || l.product?.name?.toLowerCase().includes(q)
     );
   });
 
@@ -124,12 +127,21 @@ export default function LeadsScreen() {
               </View>
             </View>
             <Text style={styles.rowSubtitle}>
-              {item.product_type ?? 'No product set'}
+              {item.product?.name ?? 'No product set'}
               {item.quantity ? ` · ${item.quantity} units` : ''}
             </Text>
-            {item.expected_order_date ? (
-              <Text style={styles.rowMeta}>Expected: {item.expected_order_date}</Text>
-            ) : null}
+            <View style={styles.rowFooter}>
+              {item.expected_order_date ? (
+                <Text style={styles.rowMeta}>Expected: {item.expected_order_date}</Text>
+              ) : (
+                <Text style={styles.rowMeta} />
+              )}
+              {item.quantity && item.unit_price ? (
+                <Text style={styles.rowMeta}>
+                  ₹{(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}
+                </Text>
+              ) : null}
+            </View>
           </TouchableOpacity>
         )}
       />
@@ -183,7 +195,8 @@ const styles = StyleSheet.create({
   stageBadge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3 },
   stageBadgeText: { fontSize: 11, color: '#fff', fontWeight: '600' },
   rowSubtitle: { fontSize: 13, color: '#64748b', marginTop: 4 },
-  rowMeta: { fontSize: 12, color: '#94a3b8', marginTop: 2 },
+  rowFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
+  rowMeta: { fontSize: 12, color: '#94a3b8' },
   fab: {
     position: 'absolute',
     right: 20,

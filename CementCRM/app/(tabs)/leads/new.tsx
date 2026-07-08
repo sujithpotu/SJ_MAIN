@@ -9,8 +9,9 @@ export default function NewLeadScreen() {
     const { error } = await supabase.from('leads').insert({
       account_id: values.account_id,
       stage: values.stage,
-      product_type: values.product_type || null,
+      product_id: values.product_id || null,
       quantity: values.quantity ? Number(values.quantity) : null,
+      unit_price: values.unit_price ? Number(values.unit_price) : null,
       expected_order_date: values.expected_order_date || null,
     });
     if (error) return error.message;

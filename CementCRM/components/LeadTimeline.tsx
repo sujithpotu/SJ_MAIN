@@ -6,6 +6,7 @@ interface HistoryRow {
   id: string;
   stage: string;
   changed_at: string;
+  comment: string | null;
   changed_by: { full_name: string | null } | null;
 }
 
@@ -17,7 +18,7 @@ export function LeadTimeline({ leadId }: { leadId: string }) {
     let cancelled = false;
     supabase
       .from('lead_stage_history')
-      .select('id, stage, changed_at, changed_by:profiles(full_name)')
+      .select('id, stage, changed_at, comment, changed_by:profiles(full_name)')
       .eq('lead_id', leadId)
       .order('changed_at', { ascending: true })
       .then(({ data }) => {
@@ -47,6 +48,7 @@ export function LeadTimeline({ leadId }: { leadId: string }) {
               {new Date(entry.changed_at).toLocaleString()}
               {entry.changed_by?.full_name ? ` · ${entry.changed_by.full_name}` : ''}
             </Text>
+            {entry.comment ? <Text style={styles.comment}>{entry.comment}</Text> : null}
           </View>
         </View>
       ))}
@@ -64,4 +66,5 @@ const styles = StyleSheet.create({
   textColumn: { flex: 1, paddingLeft: 10, paddingBottom: 16 },
   stage: { fontSize: 14, fontWeight: '600', color: '#0f172a' },
   meta: { fontSize: 12, color: '#94a3b8', marginTop: 2 },
+  comment: { fontSize: 13, color: '#334155', marginTop: 4, fontStyle: 'italic' },
 });

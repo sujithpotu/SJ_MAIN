@@ -7,7 +7,15 @@
     "icon": "./assets/icon.png",
     "scheme": "cementcrm",
     "userInterfaceStyle": "light",
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "CementCRM uses your photo library to attach product images."
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true
     },
