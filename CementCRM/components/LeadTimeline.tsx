@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { formatDateTime } from '../lib/format';
 
 interface HistoryRow {
   id: string;
@@ -45,7 +46,7 @@ export function LeadTimeline({ leadId }: { leadId: string }) {
           <View style={styles.textColumn}>
             <Text style={styles.stage}>{entry.stage}</Text>
             <Text style={styles.meta}>
-              {new Date(entry.changed_at).toLocaleString()}
+              {formatDateTime(entry.changed_at)}
               {entry.changed_by?.full_name ? ` · ${entry.changed_by.full_name}` : ''}
             </Text>
             {entry.comment ? <Text style={styles.comment}>{entry.comment}</Text> : null}

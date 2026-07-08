@@ -11,6 +11,7 @@ drop trigger if exists leads_log_stage_on_update on public.leads;
 drop trigger if exists products_set_updated_at on public.products;
 drop trigger if exists quotations_set_updated_at on public.quotations;
 drop trigger if exists quotations_protect_approval on public.quotations;
+drop trigger if exists lead_items_set_updated_at on public.lead_items;
 
 drop policy if exists "product_images_public_read" on storage.objects;
 drop policy if exists "product_images_manager_write" on storage.objects;
@@ -18,6 +19,7 @@ drop policy if exists "product_images_manager_update" on storage.objects;
 drop policy if exists "product_images_manager_delete" on storage.objects;
 delete from storage.buckets where id = 'product-images';
 
+drop table if exists public.lead_items cascade;
 drop table if exists public.quotation_items cascade;
 drop table if exists public.quotations cascade;
 drop table if exists public.lead_stage_history cascade;

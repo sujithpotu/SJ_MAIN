@@ -1,19 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { productImageUrl } from '../lib/productImages';
 import { Lead, LeadStage, LEAD_STAGES } from '../types/database';
 import { OptionChips } from './OptionChips';
 import { PickerModal, PickerItem } from './PickerModal';
-import { ProductPickerModal } from './ProductPickerModal';
 import { DateField } from './DateField';
 
 export interface LeadFormValues {
   account_id: string;
   stage: LeadStage;
-  product_id: string;
-  quantity: string;
-  unit_price: string;
   expected_order_date: string;
   stageComment: string;
 }
@@ -21,22 +16,12 @@ export interface LeadFormValues {
 interface Props {
   initial?: Lead;
   initialAccountName?: string;
-  initialProductName?: string;
-  initialProductImagePath?: string | null;
   submitLabel: string;
   onSubmit: (values: LeadFormValues) => Promise<string | null>;
   footer?: React.ReactNode;
 }
 
-export function LeadForm({
-  initial,
-  initialAccountName,
-  initialProductName,
-  initialProductImagePath,
-  submitLabel,
-  onSubmit,
-  footer,
-}: Props) {
+export function LeadForm({ initial, initialAccountName, submitLabel, onSubmit, footer }: Props) {
   const [accountId, setAccountId] = useState(initial?.account_id ?? '');
   const [accountName, setAccountName] = useState(initialAccountName ?? '');
   const [accounts, setAccounts] = useState<PickerItem[]>([]);
@@ -46,17 +31,6 @@ export function LeadForm({
   const [stage, setStage] = useState<LeadStage>(initialStage);
   const [stageComment, setStageComment] = useState('');
 
-  const [productId, setProductId] = useState(initial?.product_id ?? '');
-  const [productName, setProductName] = useState(initialProductName ?? '');
-  const [productImagePath, setProductImagePath] = useState<string | null>(
-    initialProductImagePath ?? null
-  );
-  const [productPickerVisible, setProductPickerVisible] = useState(false);
-
-  const [quantity, setQuantity] = useState(initial?.quantity != null ? String(initial.quantity) : '');
-  const [unitPrice, setUnitPrice] = useState(
-    initial?.unit_price != null ? String(initial.unit_price) : ''
-  );
   const [expectedDate, setExpectedDate] = useState(initial?.expected_order_date ?? '');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -76,30 +50,17 @@ export function LeadForm({
       setError('Select an account for this lead.');
       return;
     }
-    if (quantity && Number.isNaN(Number(quantity))) {
-      setError('Quantity must be a number.');
-      return;
-    }
-    if (unitPrice && Number.isNaN(Number(unitPrice))) {
-      setError('Unit price must be a number.');
-      return;
-    }
     setError(null);
     setSubmitting(true);
     const result = await onSubmit({
       account_id: accountId,
       stage,
-      product_id: productId,
-      quantity,
-      unit_price: unitPrice,
       expected_order_date: expectedDate.trim(),
       stageComment: stageComment.trim(),
     });
     setSubmitting(false);
     if (result) setError(result);
   };
-
-  const productImageUrlValue = productImageUrl(productImagePath);
 
   return (
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
@@ -128,34 +89,6 @@ export function LeadForm({
         </View>
       )}
 
-      <Text style={styles.label}>Product</Text>
-      <TouchableOpacity style={styles.productPicker} onPress={() => setProductPickerVisible(true)}>
-        {productImageUrlValue ? (
-          <Image source={{ uri: productImageUrlValue }} style={styles.productThumb} />
-        ) : (
-          <View style={[styles.productThumb, styles.productThumbPlaceholder]} />
-        )}
-        <Text style={styles.pickerText}>{productName || 'Select a product'}</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.label}>Quantity</Text>
-      <TextInput
-        style={styles.input}
-        value={quantity}
-        onChangeText={setQuantity}
-        placeholder="e.g. 500"
-        keyboardType="numeric"
-      />
-
-      <Text style={styles.label}>Unit price</Text>
-      <TextInput
-        style={styles.input}
-        value={unitPrice}
-        onChangeText={setUnitPrice}
-        placeholder="e.g. 380"
-        keyboardType="numeric"
-      />
-
       <DateField label="Expected order date" value={expectedDate} onChange={setExpectedDate} />
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -179,18 +112,6 @@ export function LeadForm({
           setAccountId(item.id);
           setAccountName(item.title);
           setAccountPickerVisible(false);
-        }}
-      />
-
-      <ProductPickerModal
-        visible={productPickerVisible}
-        onClose={() => setProductPickerVisible(false)}
-        onSelect={(product) => {
-          setProductId(product.id);
-          setProductName(product.name);
-          setProductImagePath(product.image_path);
-          if (!unitPrice) setUnitPrice(String(product.price));
-          setProductPickerVisible(false);
         }}
       />
     </ScrollView>
@@ -223,20 +144,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   pickerText: { fontSize: 15, color: '#0f172a' },
-  productPicker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    marginBottom: 16,
-    gap: 10,
-  },
-  productThumb: { width: 40, height: 40, borderRadius: 6, backgroundColor: '#e2e8f0' },
-  productThumbPlaceholder: {},
   error: { color: '#dc2626', marginBottom: 12, fontSize: 14 },
   button: {
     backgroundColor: '#2563eb',

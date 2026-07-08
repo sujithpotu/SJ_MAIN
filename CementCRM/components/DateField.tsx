@@ -30,6 +30,7 @@ export function DateField({ label, value, onChange }: Props) {
             value={dateValue}
             mode="date"
             display="compact"
+            locale="en-GB"
             onChange={(event, selectedDate) => {
               if (event.type === 'dismissed') return;
               if (selectedDate) onChange(toDateString(selectedDate));
@@ -58,6 +59,7 @@ export function DateField({ label, value, onChange }: Props) {
           value={dateValue}
           mode="date"
           display="default"
+          locale="en-GB"
           onChange={(event, selectedDate) => {
             setShowPicker(false);
             if (event.type === 'dismissed') return;

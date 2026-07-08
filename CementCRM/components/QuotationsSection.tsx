@@ -1,7 +1,10 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import { formatDate } from '../lib/format';
+import { lineNeedsApproval } from '../lib/pricing';
 import { QuotationStatus, QUOTATION_STATUS_LABELS } from '../types/database';
 import { QuotationModal } from './QuotationModal';
 
@@ -33,7 +36,9 @@ interface Props {
 }
 
 export function QuotationsSection({ leadId, account, expectedOrderDate }: Props) {
+  const { session } = useAuth();
   const [quotations, setQuotations] = useState<QuotationRow[]>([]);
+  const [generating, setGenerating] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [activeQuotationId, setActiveQuotationId] = useState<string | undefined>(undefined);
 
@@ -52,21 +57,82 @@ export function QuotationsSection({ leadId, account, expectedOrderDate }: Props)
     }, [load])
   );
 
+  const handleGenerate = async () => {
+    setGenerating(true);
+
+    const { data: leadItems, error: itemsError } = await supabase
+      .from('lead_items')
+      .select('product_id, quantity, unit_price, product:products(price)')
+      .eq('lead_id', leadId);
+
+    if (itemsError) {
+      Alert.alert('Could not generate quotation', itemsError.message);
+      setGenerating(false);
+      return;
+    }
+    if (!leadItems || leadItems.length === 0) {
+      Alert.alert(
+        'No products yet',
+        'Add at least one product to this lead before generating a quotation.'
+      );
+      setGenerating(false);
+      return;
+    }
+
+    const needsApproval = (leadItems as any[]).some((item) =>
+      lineNeedsApproval(Number(item.product?.price ?? 0), Number(item.unit_price))
+    );
+
+    const { data: quotation, error: qError } = await supabase
+      .from('quotations')
+      .insert({
+        lead_id: leadId,
+        status: needsApproval ? 'pending_approval' : 'draft',
+        created_by: session?.user.id,
+      })
+      .select('id')
+      .single();
+
+    if (qError || !quotation) {
+      Alert.alert('Could not generate quotation', qError?.message ?? 'Unknown error');
+      setGenerating(false);
+      return;
+    }
+
+    const { error: qiError } = await supabase.from('quotation_items').insert(
+      (leadItems as any[]).map((item) => ({
+        quotation_id: quotation.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+      }))
+    );
+
+    setGenerating(false);
+    if (qiError) {
+      Alert.alert('Could not generate quotation', qiError.message);
+      return;
+    }
+
+    await load();
+    setActiveQuotationId(quotation.id);
+    setModalVisible(true);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.heading}>Quotations</Text>
-        <TouchableOpacity
-          onPress={() => {
-            setActiveQuotationId(undefined);
-            setModalVisible(true);
-          }}
-        >
-          <Text style={styles.newButton}>+ New</Text>
+        <TouchableOpacity onPress={handleGenerate} disabled={generating}>
+          <Text style={styles.newButton}>{generating ? 'Generating…' : '+ Generate'}</Text>
         </TouchableOpacity>
       </View>
 
-      {quotations.length === 0 && <Text style={styles.empty}>No quotations yet.</Text>}
+      {quotations.length === 0 && (
+        <Text style={styles.empty}>
+          No quotations yet. Add products above, then tap Generate.
+        </Text>
+      )}
 
       {quotations.map((q) => (
         <TouchableOpacity
@@ -77,22 +143,23 @@ export function QuotationsSection({ leadId, account, expectedOrderDate }: Props)
             setModalVisible(true);
           }}
         >
-          <Text style={styles.rowDate}>{new Date(q.created_at).toLocaleDateString()}</Text>
+          <Text style={styles.rowDate}>{formatDate(q.created_at)}</Text>
           <View style={[styles.badge, { backgroundColor: STATUS_COLORS[q.status] }]}>
             <Text style={styles.badgeText}>{QUOTATION_STATUS_LABELS[q.status]}</Text>
           </View>
         </TouchableOpacity>
       ))}
 
-      <QuotationModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        leadId={leadId}
-        quotationId={activeQuotationId}
-        account={account}
-        expectedOrderDate={expectedOrderDate}
-        onSaved={load}
-      />
+      {activeQuotationId && (
+        <QuotationModal
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          quotationId={activeQuotationId}
+          account={account}
+          expectedOrderDate={expectedOrderDate}
+          onSaved={load}
+        />
+      )}
     </View>
   );
 }

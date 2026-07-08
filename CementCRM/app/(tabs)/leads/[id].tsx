@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../context/AuthContext';
 import { Lead } from '../../../types/database';
 import { LeadForm, LeadFormValues } from '../../../components/LeadForm';
+import { LeadItemsEditor } from '../../../components/LeadItemsEditor';
 import { LeadTimeline } from '../../../components/LeadTimeline';
 import { QuotationsSection } from '../../../components/QuotationsSection';
 
@@ -15,7 +16,6 @@ interface LeadWithJoins extends Lead {
     contact_person: string | null;
     phone: string | null;
   } | null;
-  product: { name: string; image_path: string | null; price: number | string } | null;
 }
 
 export default function LeadDetailScreen() {
@@ -30,9 +30,7 @@ export default function LeadDetailScreen() {
     setLoading(true);
     const { data, error } = await supabase
       .from('leads')
-      .select(
-        '*, account:accounts(name, location, contact_person, phone), product:products(name, image_path, price)'
-      )
+      .select('*, account:accounts(name, location, contact_person, phone)')
       .eq('id', id)
       .single();
     if (error) setError(error.message);
@@ -52,9 +50,6 @@ export default function LeadDetailScreen() {
       .update({
         account_id: values.account_id,
         stage: values.stage,
-        product_id: values.product_id || null,
-        quantity: values.quantity ? Number(values.quantity) : null,
-        unit_price: values.unit_price ? Number(values.unit_price) : null,
         expected_order_date: values.expected_order_date || null,
       })
       .eq('id', id);
@@ -112,12 +107,11 @@ export default function LeadDetailScreen() {
       <LeadForm
         initial={lead}
         initialAccountName={lead.account?.name}
-        initialProductName={lead.product?.name}
-        initialProductImagePath={lead.product?.image_path}
         submitLabel="Save changes"
         onSubmit={handleSubmit}
         footer={
           <>
+            <LeadItemsEditor leadId={lead.id} />
             <QuotationsSection
               leadId={lead.id}
               account={{

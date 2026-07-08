@@ -1,3 +1,5 @@
+import { formatCurrency, formatDate } from './format';
+
 interface QuotationLine {
   productName: string;
   quantity: number;
@@ -15,7 +17,7 @@ interface QuotationData {
 
 export function buildQuotationHtml(data: QuotationData): string {
   const grandTotal = data.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-  const today = new Date().toLocaleDateString();
+  const today = formatDate(new Date());
 
   const rows = data.items
     .map(
@@ -23,8 +25,8 @@ export function buildQuotationHtml(data: QuotationData): string {
         <tr>
           <td>${item.productName}</td>
           <td>${item.quantity}</td>
-          <td>₹${item.unitPrice.toFixed(2)}</td>
-          <td>₹${(item.quantity * item.unitPrice).toFixed(2)}</td>
+          <td>${formatCurrency(item.unitPrice)}</td>
+          <td>${formatCurrency(item.quantity * item.unitPrice)}</td>
         </tr>
       `
     )
@@ -57,7 +59,7 @@ export function buildQuotationHtml(data: QuotationData): string {
           ${data.accountLocation ? `<div class="value">${data.accountLocation}</div>` : ''}
           ${data.accountContact ? `<div class="value">Contact: ${data.accountContact}</div>` : ''}
           ${data.accountPhone ? `<div class="value">Phone: ${data.accountPhone}</div>` : ''}
-          ${data.expectedOrderDate ? `<div class="value">Expected order date: ${data.expectedOrderDate}</div>` : ''}
+          ${data.expectedOrderDate ? `<div class="value">Expected order date: ${formatDate(data.expectedOrderDate)}</div>` : ''}
         </div>
 
         <table>
@@ -73,7 +75,7 @@ export function buildQuotationHtml(data: QuotationData): string {
             ${rows}
             <tr class="total-row">
               <td colspan="3">Grand total</td>
-              <td>₹${grandTotal.toFixed(2)}</td>
+              <td>${formatCurrency(grandTotal)}</td>
             </tr>
           </tbody>
         </table>

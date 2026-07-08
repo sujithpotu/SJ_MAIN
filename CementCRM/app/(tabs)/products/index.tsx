@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { FlatList, Image, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../../../lib/supabase';
 import { productImageUrl } from '../../../lib/productImages';
+import { formatCurrency } from '../../../lib/format';
 import { useAuth } from '../../../context/AuthContext';
 import { Product } from '../../../types/database';
 
@@ -54,7 +55,7 @@ export default function ProductsScreen() {
               )}
               <View style={styles.rowText}>
                 <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.price}>₹{item.price}</Text>
+                <Text style={styles.price}>{formatCurrency(Number(item.price))}</Text>
               </View>
             </TouchableOpacity>
           );

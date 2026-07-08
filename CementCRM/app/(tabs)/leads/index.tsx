@@ -11,17 +11,22 @@ import {
 } from 'react-native';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../context/AuthContext';
+import { formatCurrency, formatDate } from '../../../lib/format';
 import { LEAD_STAGES, LeadStage } from '../../../types/database';
+
+interface LeadItemRow {
+  quantity: number;
+  unit_price: number;
+  product: { name: string } | null;
+}
 
 interface LeadRow {
   id: string;
   account_id: string;
   stage: LeadStage;
-  quantity: number | null;
-  unit_price: number | null;
   expected_order_date: string | null;
   account: { name: string } | null;
-  product: { name: string } | null;
+  lead_items: LeadItemRow[];
 }
 
 const STAGE_COLORS: Record<LeadStage, string> = {
@@ -47,7 +52,7 @@ export default function LeadsScreen() {
     const { data, error } = await supabase
       .from('leads')
       .select(
-        'id, account_id, stage, quantity, unit_price, expected_order_date, account:accounts(name), product:products(name)'
+        'id, account_id, stage, expected_order_date, account:accounts(name), lead_items(quantity, unit_price, product:products(name))'
       )
       .order('created_at', { ascending: false });
 
@@ -70,7 +75,8 @@ export default function LeadsScreen() {
     const q = query.trim().toLowerCase();
     if (!q) return true;
     return (
-      l.account?.name?.toLowerCase().includes(q) || l.product?.name?.toLowerCase().includes(q)
+      l.account?.name?.toLowerCase().includes(q) ||
+      l.lead_items.some((i) => i.product?.name?.toLowerCase().includes(q))
     );
   });
 
@@ -118,32 +124,36 @@ export default function LeadsScreen() {
         ListEmptyComponent={
           !loading ? <Text style={styles.empty}>No leads yet. Tap + to add one.</Text> : null
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.row} onPress={() => router.push(`/leads/${item.id}`)}>
-            <View style={styles.rowHeader}>
-              <Text style={styles.rowTitle}>{item.account?.name ?? 'Unknown account'}</Text>
-              <View style={[styles.stageBadge, { backgroundColor: STAGE_COLORS[item.stage] }]}>
-                <Text style={styles.stageBadgeText}>{item.stage}</Text>
+        renderItem={({ item }) => {
+          const items = item.lead_items;
+          const total = items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0);
+          const productSummary =
+            items.length === 0
+              ? 'No products set'
+              : items.length === 1
+                ? items[0].product?.name ?? 'Unknown product'
+                : `${items[0].product?.name ?? 'Unknown product'} +${items.length - 1} more`;
+
+          return (
+            <TouchableOpacity style={styles.row} onPress={() => router.push(`/leads/${item.id}`)}>
+              <View style={styles.rowHeader}>
+                <Text style={styles.rowTitle}>{item.account?.name ?? 'Unknown account'}</Text>
+                <View style={[styles.stageBadge, { backgroundColor: STAGE_COLORS[item.stage] }]}>
+                  <Text style={styles.stageBadgeText}>{item.stage}</Text>
+                </View>
               </View>
-            </View>
-            <Text style={styles.rowSubtitle}>
-              {item.product?.name ?? 'No product set'}
-              {item.quantity ? ` · ${item.quantity} units` : ''}
-            </Text>
-            <View style={styles.rowFooter}>
-              {item.expected_order_date ? (
-                <Text style={styles.rowMeta}>Expected: {item.expected_order_date}</Text>
-              ) : (
-                <Text style={styles.rowMeta} />
-              )}
-              {item.quantity && item.unit_price ? (
-                <Text style={styles.rowMeta}>
-                  ₹{(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}
-                </Text>
-              ) : null}
-            </View>
-          </TouchableOpacity>
-        )}
+              <Text style={styles.rowSubtitle}>{productSummary}</Text>
+              <View style={styles.rowFooter}>
+                {item.expected_order_date ? (
+                  <Text style={styles.rowMeta}>Expected: {formatDate(item.expected_order_date)}</Text>
+                ) : (
+                  <Text style={styles.rowMeta} />
+                )}
+                {total > 0 ? <Text style={styles.rowMeta}>{formatCurrency(total)}</Text> : null}
+              </View>
+            </TouchableOpacity>
+          );
+        }}
       />
 
       <TouchableOpacity style={styles.fab} onPress={() => router.push('/leads/new')}>

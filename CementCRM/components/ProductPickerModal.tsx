@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { FlatList, Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { productImageUrl } from '../lib/productImages';
+import { formatCurrency } from '../lib/format';
 import { Product } from '../types/database';
 
 interface Props {
@@ -57,7 +58,7 @@ export function ProductPickerModal({ visible, onSelect, onClose }: Props) {
                 <Text style={styles.name} numberOfLines={2}>
                   {item.name}
                 </Text>
-                <Text style={styles.price}>₹{item.price}</Text>
+                <Text style={styles.price}>{formatCurrency(Number(item.price))}</Text>
               </TouchableOpacity>
             );
           }}
