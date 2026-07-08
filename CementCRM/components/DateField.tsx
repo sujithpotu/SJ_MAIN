@@ -113,9 +113,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
-    width: 340,
+    width: 360,
   },
-  picker: { height: 340, width: '100%' },
+  picker: { height: 420, width: '100%' },
   actions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
