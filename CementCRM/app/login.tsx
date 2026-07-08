@@ -35,7 +35,7 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.card}>
-        <Text style={styles.title}>CementCRM</Text>
+        <Text style={styles.title}>SPCC CRM App</Text>
         <Text style={styles.subtitle}>Sign in to your account</Text>
 
         <TextInput

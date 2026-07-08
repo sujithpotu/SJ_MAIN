@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "CementCRM",
+    "name": "SPCC CRM App",
     "slug": "CementCRM",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,7 +12,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "CementCRM uses your photo library to attach product images."
+          "photosPermission": "SPCC CRM App uses your photo library to attach product images."
         }
       ]
     ],
