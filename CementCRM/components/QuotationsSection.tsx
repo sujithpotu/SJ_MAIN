@@ -4,7 +4,7 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { formatDate } from '../lib/format';
-import { lineNeedsApproval } from '../lib/pricing';
+import { ComparableLine, itemSetsMatch, lineNeedsApproval } from '../lib/pricing';
 import { QuotationStatus, QUOTATION_STATUS_LABELS } from '../types/database';
 import { QuotationModal } from './QuotationModal';
 
@@ -88,9 +88,40 @@ export function QuotationsSection({ leadId, account, expectedOrderDate }: Props)
       return;
     }
 
-    const needsApproval = (leadItems as any[]).some((item) =>
+    const currentLines: ComparableLine[] = (leadItems as any[]).map((item) => ({
+      product_id: item.product_id,
+      quantity: Number(item.quantity),
+      unit_price: Number(item.unit_price),
+    }));
+
+    let needsApproval = (leadItems as any[]).some((item) =>
       lineNeedsApproval(Number(item.product?.price ?? 0), Number(item.unit_price))
     );
+
+    // Don't re-require approval if these exact items were already approved
+    // (or sent, which implies they were fine) on a previous quotation for
+    // this lead -- only a genuine change should trigger review again.
+    if (needsApproval) {
+      const { data: lastBlessed } = await supabase
+        .from('quotations')
+        .select('id, quotation_items(product_id, quantity, unit_price)')
+        .eq('lead_id', leadId)
+        .in('status', ['approved', 'sent'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (lastBlessed) {
+        const lastLines: ComparableLine[] = (lastBlessed.quotation_items as any[]).map((i) => ({
+          product_id: i.product_id,
+          quantity: Number(i.quantity),
+          unit_price: Number(i.unit_price),
+        }));
+        if (itemSetsMatch(currentLines, lastLines)) {
+          needsApproval = false;
+        }
+      }
+    }
 
     const { data: quotation, error: qError } = await supabase
       .from('quotations')

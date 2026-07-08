@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import * as Print from 'expo-print';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -50,10 +59,12 @@ export function QuotationModal({
   const [existing, setExisting] = useState<ExistingQuotation | null>(null);
   const [existingItems, setExistingItems] = useState<ExistingItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [reviewComment, setReviewComment] = useState('');
 
   useEffect(() => {
     if (!visible) return;
     setLoading(true);
+    setReviewComment('');
     Promise.all([
       supabase.from('quotations').select('id, status, notes').eq('id', quotationId).single(),
       supabase
@@ -68,7 +79,10 @@ export function QuotationModal({
   }, [visible, quotationId]);
 
   const handleApprove = async (status: 'approved' | 'rejected') => {
-    const { error } = await supabase.from('quotations').update({ status }).eq('id', quotationId);
+    const { error } = await supabase
+      .from('quotations')
+      .update({ status, notes: reviewComment.trim() || null })
+      .eq('id', quotationId);
     if (error) {
       Alert.alert('Could not update', error.message);
       return;
@@ -135,21 +149,40 @@ export function QuotationModal({
             ))}
             <Text style={styles.grandTotal}>Total: {formatCurrency(total)}</Text>
 
-            {existing.status === 'pending_approval' && isManager && (
-              <View style={styles.approvalRow}>
-                <TouchableOpacity
-                  style={[styles.button, styles.rejectButton]}
-                  onPress={() => handleApprove('rejected')}
-                >
-                  <Text style={styles.buttonText}>Reject</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.button, styles.approveButton]}
-                  onPress={() => handleApprove('approved')}
-                >
-                  <Text style={styles.buttonText}>Approve</Text>
-                </TouchableOpacity>
+            {existing.notes && existing.status !== 'pending_approval' && (
+              <View style={styles.noteBox}>
+                <Text style={styles.noteLabel}>
+                  {existing.status === 'rejected' ? 'Rejection comment' : 'Note'}
+                </Text>
+                <Text style={styles.noteText}>{existing.notes}</Text>
               </View>
+            )}
+
+            {existing.status === 'pending_approval' && isManager && (
+              <>
+                <Text style={styles.label}>Comment (optional — shown especially if rejecting)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={reviewComment}
+                  onChangeText={setReviewComment}
+                  placeholder="Why approve or reject this?"
+                  multiline
+                />
+                <View style={styles.approvalRow}>
+                  <TouchableOpacity
+                    style={[styles.button, styles.rejectButton]}
+                    onPress={() => handleApprove('rejected')}
+                  >
+                    <Text style={styles.buttonText}>Reject</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.button, styles.approveButton]}
+                    onPress={() => handleApprove('approved')}
+                  >
+                    <Text style={styles.buttonText}>Approve</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
             )}
 
             {existing.status === 'pending_approval' && !isManager && (
@@ -200,6 +233,28 @@ const styles = StyleSheet.create({
   lineName: { fontSize: 15, fontWeight: '600', color: '#0f172a' },
   lineMeta: { fontSize: 13, color: '#64748b', marginTop: 2 },
   grandTotal: { fontSize: 16, fontWeight: '700', color: '#0f172a', marginTop: 16, marginBottom: 20 },
+  noteBox: {
+    backgroundColor: '#fef2f2',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 20,
+  },
+  noteLabel: { fontSize: 11, fontWeight: '700', color: '#991b1b', textTransform: 'uppercase' },
+  noteText: { fontSize: 14, color: '#7f1d1d', marginTop: 4 },
+  label: { fontSize: 13, fontWeight: '600', color: '#475569', marginBottom: 6 },
+  input: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    marginBottom: 16,
+    color: '#0f172a',
+    minHeight: 70,
+    textAlignVertical: 'top',
+  },
   button: {
     borderRadius: 10,
     paddingVertical: 14,
