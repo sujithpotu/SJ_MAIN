@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../context/AuthContext';
-import { ACCOUNT_TYPES } from '../../../types/database';
+import { ACCOUNT_TYPES, AccountStatus } from '../../../types/database';
 
 interface AccountRow {
   id: string;
@@ -21,6 +21,7 @@ interface AccountRow {
   contact_person: string | null;
   phone: string | null;
   assigned_rep: string;
+  status: AccountStatus;
   rep: { full_name: string | null } | null;
 }
 
@@ -32,6 +33,7 @@ export default function AccountsScreen() {
   const router = useRouter();
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<AccountStatus | 'all'>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +41,9 @@ export default function AccountsScreen() {
     setError(null);
     const { data, error } = await supabase
       .from('accounts')
-      .select('id, name, type, location, contact_person, phone, assigned_rep, rep:profiles!assigned_rep(full_name)')
+      .select(
+        'id, name, type, location, contact_person, phone, assigned_rep, status, rep:profiles!assigned_rep(full_name)'
+      )
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -57,6 +61,7 @@ export default function AccountsScreen() {
   );
 
   const filtered = accounts.filter((a) => {
+    if (statusFilter !== 'all' && a.status !== statusFilter) return false;
     const q = query.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -81,6 +86,25 @@ export default function AccountsScreen() {
         onChangeText={setQuery}
       />
 
+      <View style={styles.statusRow}>
+        {(['all', 'prospect', 'active'] as const).map((status) => (
+          <TouchableOpacity
+            key={status}
+            style={[styles.statusChip, statusFilter === status && styles.statusChipSelected]}
+            onPress={() => setStatusFilter(status)}
+          >
+            <Text
+              style={[
+                styles.statusChipText,
+                statusFilter === status && styles.statusChipTextSelected,
+              ]}
+            >
+              {status === 'all' ? 'All' : status === 'prospect' ? 'Prospects' : 'Active'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <FlatList
@@ -98,8 +122,15 @@ export default function AccountsScreen() {
           >
             <View style={styles.rowHeader}>
               <Text style={styles.rowTitle}>{item.name}</Text>
-              <View style={styles.typeBadge}>
-                <Text style={styles.typeBadgeText}>{typeLabel(item.type)}</Text>
+              <View style={styles.badgeGroup}>
+                {item.status === 'prospect' && (
+                  <View style={styles.prospectBadge}>
+                    <Text style={styles.prospectBadgeText}>Prospect</Text>
+                  </View>
+                )}
+                <View style={styles.typeBadge}>
+                  <Text style={styles.typeBadgeText}>{typeLabel(item.type)}</Text>
+                </View>
               </View>
             </View>
             {item.location ? <Text style={styles.rowSubtitle}>{item.location}</Text> : null}
@@ -139,6 +170,21 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 15,
   },
+  statusRow: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+  },
+  statusChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: '#f1f5f9',
+  },
+  statusChipSelected: { backgroundColor: '#0f172a' },
+  statusChipText: { fontSize: 11, color: '#475569', fontWeight: '500' },
+  statusChipTextSelected: { color: '#fff' },
   error: { color: '#dc2626', paddingHorizontal: 16, marginBottom: 8 },
   emptyContainer: { flex: 1, justifyContent: 'center' },
   empty: { textAlign: 'center', color: '#94a3b8' },
@@ -150,6 +196,14 @@ const styles = StyleSheet.create({
   },
   rowHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowTitle: { fontSize: 16, fontWeight: '600', color: '#0f172a', flexShrink: 1 },
+  badgeGroup: { flexDirection: 'row', gap: 6 },
+  prospectBadge: {
+    backgroundColor: '#fffbeb',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  prospectBadgeText: { fontSize: 11, color: '#d97706', fontWeight: '600' },
   typeBadge: {
     backgroundColor: '#eff6ff',
     borderRadius: 12,

@@ -35,6 +35,32 @@ export default function AccountDetailScreen() {
     return null;
   };
 
+  const [converting, setConverting] = useState(false);
+
+  const handleConvertToLead = async () => {
+    setConverting(true);
+    const { error: statusError } = await supabase
+      .from('accounts')
+      .update({ status: 'active' })
+      .eq('id', id);
+    if (statusError) {
+      Alert.alert('Could not convert', statusError.message);
+      setConverting(false);
+      return;
+    }
+    const { data: newLead, error: leadError } = await supabase
+      .from('leads')
+      .insert({ account_id: id, stage: 'New Lead' })
+      .select('id')
+      .single();
+    setConverting(false);
+    if (leadError || !newLead) {
+      Alert.alert('Could not create lead', leadError?.message ?? 'Unknown error');
+      return;
+    }
+    router.replace(`/leads/${newLead.id}`);
+  };
+
   const handleDelete = () => {
     Alert.alert('Delete account', 'This will also delete its leads. This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
@@ -71,6 +97,22 @@ export default function AccountDetailScreen() {
 
   return (
     <View style={{ flex: 1 }}>
+      {account.status === 'prospect' && (
+        <View style={styles.prospectBanner}>
+          <Text style={styles.prospectBannerText}>
+            This is a prospect — not yet an active account.
+          </Text>
+          <TouchableOpacity
+            style={[styles.convertButton, converting && styles.convertButtonDisabled]}
+            onPress={handleConvertToLead}
+            disabled={converting}
+          >
+            <Text style={styles.convertButtonText}>
+              {converting ? 'Converting…' : 'Convert to lead'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
       <AccountForm initial={account} submitLabel="Save changes" onSubmit={handleSubmit} />
       {profile?.role === 'manager' && (
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
@@ -86,4 +128,20 @@ const styles = StyleSheet.create({
   error: { color: '#dc2626', fontSize: 15 },
   deleteButton: { alignItems: 'center', paddingVertical: 16 },
   deleteText: { color: '#dc2626', fontSize: 14, fontWeight: '600' },
+  prospectBanner: {
+    backgroundColor: '#fffbeb',
+    borderBottomWidth: 1,
+    borderBottomColor: '#fde68a',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  prospectBannerText: { fontSize: 13, color: '#92400e', marginBottom: 8 },
+  convertButton: {
+    backgroundColor: '#d97706',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  convertButtonDisabled: { opacity: 0.6 },
+  convertButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });

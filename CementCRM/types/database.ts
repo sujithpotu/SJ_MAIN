@@ -33,6 +33,8 @@ export interface Profile {
   created_at: string;
 }
 
+export type AccountStatus = 'prospect' | 'active';
+
 export interface Account {
   id: string;
   name: string;
@@ -41,6 +43,7 @@ export interface Account {
   contact_person: string | null;
   phone: string | null;
   assigned_rep: string;
+  status: AccountStatus;
   created_at: string;
   updated_at: string;
 }
@@ -65,4 +68,35 @@ export interface Product {
   price: number | string;
   created_at: string;
   updated_at: string;
+}
+
+export type QuotationStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'sent';
+
+export const QUOTATION_STATUS_LABELS: Record<QuotationStatus, string> = {
+  draft: 'Draft',
+  pending_approval: 'Pending approval',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  sent: 'Sent',
+};
+
+export interface Quotation {
+  id: string;
+  lead_id: string;
+  status: QuotationStatus;
+  notes: string | null;
+  created_by: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuotationItem {
+  id: string;
+  quotation_id: string;
+  product_id: string | null;
+  quantity: number | string;
+  unit_price: number | string;
+  created_at: string;
 }

@@ -1,17 +1,34 @@
+interface QuotationLine {
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+}
+
 interface QuotationData {
   accountName: string;
   accountLocation: string | null;
   accountContact: string | null;
   accountPhone: string | null;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
   expectedOrderDate: string | null;
+  items: QuotationLine[];
 }
 
 export function buildQuotationHtml(data: QuotationData): string {
-  const total = data.quantity * data.unitPrice;
+  const grandTotal = data.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   const today = new Date().toLocaleDateString();
+
+  const rows = data.items
+    .map(
+      (item) => `
+        <tr>
+          <td>${item.productName}</td>
+          <td>${item.quantity}</td>
+          <td>₹${item.unitPrice.toFixed(2)}</td>
+          <td>₹${(item.quantity * item.unitPrice).toFixed(2)}</td>
+        </tr>
+      `
+    )
+    .join('');
 
   return `
     <html>
@@ -31,7 +48,7 @@ export function buildQuotationHtml(data: QuotationData): string {
         </style>
       </head>
       <body>
-        <h1>CementCRM Quotation</h1>
+        <h1>SPCC CRM App Quotation</h1>
         <div class="muted">Generated ${today}</div>
 
         <div class="section">
@@ -53,15 +70,10 @@ export function buildQuotationHtml(data: QuotationData): string {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>${data.productName}</td>
-              <td>${data.quantity}</td>
-              <td>₹${data.unitPrice.toFixed(2)}</td>
-              <td>₹${total.toFixed(2)}</td>
-            </tr>
+            ${rows}
             <tr class="total-row">
               <td colspan="3">Grand total</td>
-              <td>₹${total.toFixed(2)}</td>
+              <td>₹${grandTotal.toFixed(2)}</td>
             </tr>
           </tbody>
         </table>
