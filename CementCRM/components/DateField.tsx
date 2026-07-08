@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface Props {
@@ -16,76 +16,55 @@ function toDateString(date: Date): string {
 }
 
 export function DateField({ label, value, onChange }: Props) {
+  const dateValue = value ? new Date(`${value}T00:00:00`) : new Date();
   const [showPicker, setShowPicker] = useState(false);
-  const [draft, setDraft] = useState<Date>(value ? new Date(`${value}T00:00:00`) : new Date());
 
-  const openPicker = () => {
-    setDraft(value ? new Date(`${value}T00:00:00`) : new Date());
-    setShowPicker(true);
-  };
-
-  if (Platform.OS === 'android') {
+  // iOS "compact" is a persistent native pill that opens its own popover —
+  // just render it directly, no manual open/close state needed.
+  if (Platform.OS === 'ios') {
     return (
       <View style={styles.wrapper}>
         <Text style={styles.label}>{label}</Text>
-        <TouchableOpacity style={styles.field} onPress={openPicker}>
-          <Text style={value ? styles.valueText : styles.placeholderText}>
-            {value || 'Select a date'}
-          </Text>
-        </TouchableOpacity>
-        {showPicker && (
+        <View style={styles.field}>
           <DateTimePicker
-            value={draft}
+            value={dateValue}
             mode="date"
-            display="default"
+            display="compact"
             onChange={(event, selectedDate) => {
-              setShowPicker(false);
               if (event.type === 'dismissed') return;
               if (selectedDate) onChange(toDateString(selectedDate));
             }}
           />
-        )}
+          {!value && (
+            <Text style={styles.placeholderHint}>Not set — tap the date to choose one</Text>
+          )}
+        </View>
       </View>
     );
   }
 
+  // Android's "default" display is a triggered dialog, not a persistent
+  // widget, so it needs to be mounted only while open.
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>{label}</Text>
-      <TouchableOpacity style={styles.field} onPress={openPicker}>
+      <TouchableOpacity style={styles.androidField} onPress={() => setShowPicker(true)}>
         <Text style={value ? styles.valueText : styles.placeholderText}>
           {value || 'Select a date'}
         </Text>
       </TouchableOpacity>
-
-      <Modal visible={showPicker} transparent animationType="fade" onRequestClose={() => setShowPicker(false)}>
-        <View style={styles.overlay}>
-          <View style={styles.card}>
-            <DateTimePicker
-              value={draft}
-              mode="date"
-              display="inline"
-              style={styles.picker}
-              onChange={(_event, selectedDate) => {
-                if (selectedDate) setDraft(selectedDate);
-              }}
-            />
-            <View style={styles.actions}>
-              <TouchableOpacity onPress={() => setShowPicker(false)}>
-                <Text style={styles.cancel}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  onChange(toDateString(draft));
-                  setShowPicker(false);
-                }}
-              >
-                <Text style={styles.done}>Done</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {showPicker && (
+        <DateTimePicker
+          value={dateValue}
+          mode="date"
+          display="default"
+          onChange={(event, selectedDate) => {
+            setShowPicker(false);
+            if (event.type === 'dismissed') return;
+            if (selectedDate) onChange(toDateString(selectedDate));
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -94,6 +73,16 @@ const styles = StyleSheet.create({
   wrapper: { marginBottom: 16 },
   label: { fontSize: 13, fontWeight: '600', color: '#475569', marginBottom: 6 },
   field: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  androidField: {
     backgroundColor: '#f8fafc',
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -101,27 +90,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
+  placeholderHint: { fontSize: 12, color: '#94a3b8', marginLeft: 8 },
   valueText: { fontSize: 15, color: '#0f172a' },
   placeholderText: { fontSize: 15, color: '#94a3b8' },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    width: 360,
-  },
-  picker: { height: 420, width: '100%' },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 24,
-    marginTop: 8,
-  },
-  cancel: { color: '#64748b', fontSize: 15, fontWeight: '600' },
-  done: { color: '#2563eb', fontSize: 15, fontWeight: '600' },
 });
