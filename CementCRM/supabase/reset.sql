@@ -12,6 +12,7 @@ drop trigger if exists products_set_updated_at on public.products;
 drop trigger if exists quotations_set_updated_at on public.quotations;
 drop trigger if exists quotations_protect_approval on public.quotations;
 drop trigger if exists lead_items_set_updated_at on public.lead_items;
+drop trigger if exists quotations_block_duplicate_pending on public.quotations;
 
 drop policy if exists "product_images_public_read" on storage.objects;
 drop policy if exists "product_images_manager_write" on storage.objects;
@@ -34,3 +35,4 @@ drop function if exists public.protect_profile_role();
 drop function if exists public.set_updated_at();
 drop function if exists public.log_lead_stage_change();
 drop function if exists public.protect_quotation_approval();
+drop function if exists public.block_duplicate_pending_quotation();

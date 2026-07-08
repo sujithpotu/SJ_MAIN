@@ -57,7 +57,16 @@ export function QuotationsSection({ leadId, account, expectedOrderDate }: Props)
     }, [load])
   );
 
+  const hasPendingApproval = quotations.some((q) => q.status === 'pending_approval');
+
   const handleGenerate = async () => {
+    if (hasPendingApproval) {
+      Alert.alert(
+        'Pending approval',
+        'This lead already has a quotation pending approval. Wait for a manager to approve or reject it before generating another.'
+      );
+      return;
+    }
     setGenerating(true);
 
     const { data: leadItems, error: itemsError } = await supabase
@@ -123,14 +132,24 @@ export function QuotationsSection({ leadId, account, expectedOrderDate }: Props)
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.heading}>Quotations</Text>
-        <TouchableOpacity onPress={handleGenerate} disabled={generating}>
-          <Text style={styles.newButton}>{generating ? 'Generating…' : '+ Generate'}</Text>
+        <TouchableOpacity onPress={handleGenerate} disabled={generating || hasPendingApproval}>
+          <Text
+            style={[styles.newButton, hasPendingApproval && styles.newButtonDisabled]}
+          >
+            {generating ? 'Generating…' : '+ Generate'}
+          </Text>
         </TouchableOpacity>
       </View>
 
       {quotations.length === 0 && (
         <Text style={styles.empty}>
           No quotations yet. Add products above, then tap Generate.
+        </Text>
+      )}
+
+      {hasPendingApproval && (
+        <Text style={styles.pendingNotice}>
+          A quotation is pending approval — approve or reject it before generating another.
         </Text>
       )}
 
@@ -174,7 +193,9 @@ const styles = StyleSheet.create({
   },
   heading: { fontSize: 13, fontWeight: '600', color: '#475569' },
   newButton: { fontSize: 13, fontWeight: '600', color: '#2563eb' },
+  newButtonDisabled: { color: '#cbd5e1' },
   empty: { fontSize: 13, color: '#94a3b8' },
+  pendingNotice: { fontSize: 12, color: '#d97706', marginBottom: 10 },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
