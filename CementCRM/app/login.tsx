@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -35,7 +36,13 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.card}>
-        <Text style={styles.title}>SPCC CRM App</Text>
+        <View style={styles.logoCard}>
+          <Image
+            source={require('../assets/logo-1.webp')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
         <Text style={styles.subtitle}>Sign in to your account</Text>
 
         <TextInput
@@ -89,17 +96,23 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#fff',
-    textAlign: 'center',
+  logoCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    alignSelf: 'center',
+  },
+  logo: {
+    width: 240,
+    height: 64,
   },
   subtitle: {
     fontSize: 15,
     color: '#94a3b8',
     textAlign: 'center',
-    marginTop: 6,
+    marginTop: 16,
     marginBottom: 32,
   },
   input: {

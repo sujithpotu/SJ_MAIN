@@ -1,4 +1,5 @@
 import { formatCurrency, formatDate } from './format';
+import { LOGO_BASE64_WEBP } from './logoBase64';
 
 interface QuotationLine {
   productName: string;
@@ -38,7 +39,9 @@ export function buildQuotationHtml(data: QuotationData): string {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <style>
           body { font-family: -apple-system, Helvetica, Arial, sans-serif; padding: 32px; color: #0f172a; }
-          h1 { font-size: 22px; margin-bottom: 4px; }
+          .header { display: flex; align-items: center; margin-bottom: 24px; }
+          .logo { height: 48px; margin-right: 16px; }
+          h1 { font-size: 20px; margin: 0; }
           .muted { color: #64748b; font-size: 13px; margin-bottom: 24px; }
           .section { margin-bottom: 24px; }
           .label { font-size: 11px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; }
@@ -50,7 +53,10 @@ export function buildQuotationHtml(data: QuotationData): string {
         </style>
       </head>
       <body>
-        <h1>SPCC CRM App Quotation</h1>
+        <div class="header">
+          <img class="logo" src="data:image/webp;base64,${LOGO_BASE64_WEBP}" />
+          <h1>Quotation</h1>
+        </div>
         <div class="muted">Generated ${today}</div>
 
         <div class="section">
