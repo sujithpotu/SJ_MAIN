@@ -33,9 +33,10 @@ interface Props {
   leadId: string;
   account: Account;
   expectedOrderDate: string | null;
+  locked?: boolean;
 }
 
-export function QuotationsSection({ leadId, account, expectedOrderDate }: Props) {
+export function QuotationsSection({ leadId, account, expectedOrderDate, locked }: Props) {
   const { session } = useAuth();
   const [quotations, setQuotations] = useState<QuotationRow[]>([]);
   const [generating, setGenerating] = useState(false);
@@ -60,6 +61,10 @@ export function QuotationsSection({ leadId, account, expectedOrderDate }: Props)
   const hasPendingApproval = quotations.some((q) => q.status === 'pending_approval');
 
   const handleGenerate = async () => {
+    if (locked) {
+      Alert.alert('Lead closed', 'This lead is Won or Lost — no new quotations can be generated.');
+      return;
+    }
     if (hasPendingApproval) {
       Alert.alert(
         'Pending approval',
@@ -94,33 +99,32 @@ export function QuotationsSection({ leadId, account, expectedOrderDate }: Props)
       unit_price: Number(item.unit_price),
     }));
 
-    let needsApproval = (leadItems as any[]).some((item) =>
+    const isDiscounted = (leadItems as any[]).some((item) =>
       lineNeedsApproval(Number(item.product?.price ?? 0), Number(item.unit_price))
     );
 
-    // Don't re-require approval if these exact items were already approved
-    // (or sent, which implies they were fine) on a previous quotation for
-    // this lead -- only a genuine change should trigger review again.
-    if (needsApproval) {
-      const { data: lastBlessed } = await supabase
-        .from('quotations')
-        .select('id, quotation_items(product_id, quantity, unit_price)')
-        .eq('lead_id', leadId)
-        .in('status', ['approved', 'sent'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    const { data: lastBlessed } = await supabase
+      .from('quotations')
+      .select('id, quotation_items(product_id, quantity, unit_price)')
+      .eq('lead_id', leadId)
+      .in('status', ['approved', 'sent'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-      if (lastBlessed) {
-        const lastLines: ComparableLine[] = (lastBlessed.quotation_items as any[]).map((i) => ({
-          product_id: i.product_id,
-          quantity: Number(i.quantity),
-          unit_price: Number(i.unit_price),
-        }));
-        if (itemSetsMatch(currentLines, lastLines)) {
-          needsApproval = false;
-        }
-      }
+    // Once something has been approved/sent for this lead, ANY change to
+    // the product list (added, removed, or edited -- not just a discount)
+    // requires fresh approval. If nothing has changed, skip approval even
+    // if the pricing is discounted, since it was already reviewed.
+    let needsApproval = isDiscounted;
+    if (lastBlessed) {
+      const lastLines: ComparableLine[] = (lastBlessed.quotation_items as any[]).map((i) => ({
+        product_id: i.product_id,
+        quantity: Number(i.quantity),
+        unit_price: Number(i.unit_price),
+      }));
+      const unchanged = itemSetsMatch(currentLines, lastLines);
+      needsApproval = unchanged ? false : true;
     }
 
     const { data: quotation, error: qError } = await supabase
@@ -163,13 +167,13 @@ export function QuotationsSection({ leadId, account, expectedOrderDate }: Props)
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.heading}>Quotations</Text>
-        <TouchableOpacity onPress={handleGenerate} disabled={generating || hasPendingApproval}>
-          <Text
-            style={[styles.newButton, hasPendingApproval && styles.newButtonDisabled]}
-          >
-            {generating ? 'Generating…' : '+ Generate'}
-          </Text>
-        </TouchableOpacity>
+        {!locked && (
+          <TouchableOpacity onPress={handleGenerate} disabled={generating || hasPendingApproval}>
+            <Text style={[styles.newButton, hasPendingApproval && styles.newButtonDisabled]}>
+              {generating ? 'Generating…' : '+ Generate'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {quotations.length === 0 && (
@@ -178,7 +182,11 @@ export function QuotationsSection({ leadId, account, expectedOrderDate }: Props)
         </Text>
       )}
 
-      {hasPendingApproval && (
+      {locked && (
+        <Text style={styles.pendingNotice}>This lead is closed — no new quotations.</Text>
+      )}
+
+      {!locked && hasPendingApproval && (
         <Text style={styles.pendingNotice}>
           A quotation is pending approval — approve or reject it before generating another.
         </Text>

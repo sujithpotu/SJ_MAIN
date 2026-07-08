@@ -15,7 +15,7 @@ interface ItemRow {
   product: { name: string; image_path: string | null } | null;
 }
 
-export function LeadItemsEditor({ leadId }: { leadId: string }) {
+export function LeadItemsEditor({ leadId, locked }: { leadId: string; locked?: boolean }) {
   const [items, setItems] = useState<ItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -114,10 +114,18 @@ export function LeadItemsEditor({ leadId }: { leadId: string }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.heading}>Products</Text>
-        <TouchableOpacity onPress={() => setPickerVisible(true)}>
-          <Text style={styles.addButton}>+ Add product</Text>
-        </TouchableOpacity>
+        {!locked && (
+          <TouchableOpacity onPress={() => setPickerVisible(true)}>
+            <Text style={styles.addButton}>+ Add product</Text>
+          </TouchableOpacity>
+        )}
       </View>
+
+      {locked && (
+        <Text style={styles.lockedNotice}>
+          This lead is closed (Won/Lost) — products are locked.
+        </Text>
+      )}
 
       {items.length === 0 && (
         <Text style={styles.empty}>No products yet. Add one to start building a quotation.</Text>
@@ -136,9 +144,11 @@ export function LeadItemsEditor({ leadId }: { leadId: string }) {
               <Text style={styles.productName} numberOfLines={1}>
                 {item.product?.name ?? 'Unknown product'}
               </Text>
-              <TouchableOpacity onPress={() => handleRemoveRow(item.id)} hitSlop={8}>
-                <Text style={styles.remove}>Remove</Text>
-              </TouchableOpacity>
+              {!locked && (
+                <TouchableOpacity onPress={() => handleRemoveRow(item.id)} hitSlop={8}>
+                  <Text style={styles.remove}>Remove</Text>
+                </TouchableOpacity>
+              )}
             </View>
             <View style={styles.inputsRow}>
               <TextInput
@@ -146,6 +156,7 @@ export function LeadItemsEditor({ leadId }: { leadId: string }) {
                 placeholder="Qty"
                 keyboardType="numeric"
                 value={item.quantity}
+                editable={!locked}
                 onChangeText={(v) => updateLocal(item.id, { quantity: v })}
                 onBlur={() => handleBlurSave(items.find((i) => i.id === item.id)!)}
               />
@@ -154,6 +165,7 @@ export function LeadItemsEditor({ leadId }: { leadId: string }) {
                 placeholder="Unit price"
                 keyboardType="numeric"
                 value={item.unit_price}
+                editable={!locked}
                 onChangeText={(v) => updateLocal(item.id, { unit_price: v })}
                 onBlur={() => handleBlurSave(items.find((i) => i.id === item.id)!)}
               />
@@ -184,6 +196,7 @@ const styles = StyleSheet.create({
   heading: { fontSize: 13, fontWeight: '600', color: '#475569' },
   addButton: { fontSize: 13, fontWeight: '600', color: '#2563eb' },
   empty: { fontSize: 13, color: '#94a3b8', marginBottom: 8 },
+  lockedNotice: { fontSize: 12, color: '#d97706', marginBottom: 10 },
   card: {
     backgroundColor: '#f8fafc',
     borderRadius: 12,

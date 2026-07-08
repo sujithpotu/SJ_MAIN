@@ -103,6 +103,8 @@ export default function LeadDetailScreen() {
     );
   }
 
+  const locked = lead.stage === 'Won' || lead.stage === 'Lost';
+
   return (
     <View style={{ flex: 1 }}>
       <LeadForm
@@ -112,7 +114,7 @@ export default function LeadDetailScreen() {
         onSubmit={handleSubmit}
         footer={
           <>
-            <LeadItemsEditor leadId={lead.id} />
+            <LeadItemsEditor leadId={lead.id} locked={locked} />
             <QuotationsSection
               leadId={lead.id}
               account={{
@@ -122,6 +124,7 @@ export default function LeadDetailScreen() {
                 phone: lead.account?.phone ?? null,
               }}
               expectedOrderDate={lead.expected_order_date}
+              locked={locked}
             />
             <LeadTimeline leadId={lead.id} />
           </>
