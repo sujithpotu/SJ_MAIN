@@ -23,6 +23,7 @@ const STATUS_COLORS: Record<QuotationStatus, string> = {
 };
 
 interface Account {
+  id: string;
   name: string;
   location: string | null;
   contact_person: string | null;

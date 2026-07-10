@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import * as Print from 'expo-print';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +19,7 @@ import { QuotationStatus, QUOTATION_STATUS_LABELS } from '../types/database';
 
 interface ExistingItem {
   id: string;
+  product_id: string | null;
   quantity: number;
   unit_price: number;
   product: { name: string; price: number } | null;
@@ -25,11 +27,13 @@ interface ExistingItem {
 
 interface ExistingQuotation {
   id: string;
+  lead_id: string;
   status: QuotationStatus;
   notes: string | null;
 }
 
 interface Account {
+  id: string;
   name: string;
   location: string | null;
   contact_person: string | null;
@@ -53,28 +57,40 @@ export function QuotationModal({
   expectedOrderDate,
   onSaved,
 }: Props) {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
+  const router = useRouter();
   const isManager = profile?.role === 'manager';
 
   const [existing, setExisting] = useState<ExistingQuotation | null>(null);
   const [existingItems, setExistingItems] = useState<ExistingItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [reviewComment, setReviewComment] = useState('');
+  const [existingOrderId, setExistingOrderId] = useState<string | null>(null);
+  const [converting, setConverting] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     setLoading(true);
     setReviewComment('');
     Promise.all([
-      supabase.from('quotations').select('id, status, notes').eq('id', quotationId).single(),
+      supabase.from('quotations').select('id, lead_id, status, notes').eq('id', quotationId).single(),
       supabase
         .from('quotation_items')
-        .select('id, quantity, unit_price, product:products(name, price)')
+        .select('id, product_id, quantity, unit_price, product:products(name, price)')
         .eq('quotation_id', quotationId),
     ]).then(([q, items]) => {
-      setExisting((q.data as any) ?? null);
+      const quotation = (q.data as any) ?? null;
+      setExisting(quotation);
       setExistingItems((items.data as any) ?? []);
       setLoading(false);
+      if (quotation) {
+        supabase
+          .from('sales_orders')
+          .select('id')
+          .eq('lead_id', quotation.lead_id)
+          .maybeSingle()
+          .then(({ data }) => setExistingOrderId(data?.id ?? null));
+      }
     });
   }, [visible, quotationId]);
 
@@ -113,6 +129,47 @@ export function QuotationModal({
     } catch (e: any) {
       Alert.alert('Could not print', e.message ?? String(e));
     }
+  };
+
+  const handleConvertToOrder = async () => {
+    if (!existing) return;
+    setConverting(true);
+    const { data: order, error: orderError } = await supabase
+      .from('sales_orders')
+      .insert({
+        lead_id: existing.lead_id,
+        quotation_id: existing.id,
+        account_id: account.id,
+        delivery_address: account.location,
+        created_by: session?.user.id,
+      })
+      .select('id')
+      .single();
+
+    if (orderError || !order) {
+      Alert.alert('Could not create sales order', orderError?.message ?? 'Unknown error');
+      setConverting(false);
+      return;
+    }
+
+    const { error: itemsError } = await supabase.from('sales_order_items').insert(
+      existingItems.map((item) => ({
+        sales_order_id: order.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+      }))
+    );
+
+    setConverting(false);
+    if (itemsError) {
+      Alert.alert('Could not create sales order', itemsError.message);
+      return;
+    }
+
+    onSaved();
+    onClose();
+    router.push(`/orders/${order.id}`);
   };
 
   const total = existingItems.reduce(
@@ -199,6 +256,29 @@ export function QuotationModal({
                 </Text>
               </TouchableOpacity>
             )}
+
+            {(existing.status === 'approved' || existing.status === 'sent') &&
+              (existingOrderId ? (
+                <TouchableOpacity
+                  style={[styles.button, styles.orderButton]}
+                  onPress={() => {
+                    onClose();
+                    router.push(`/orders/${existingOrderId}`);
+                  }}
+                >
+                  <Text style={styles.buttonText}>View sales order</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.button, styles.orderButton, converting && styles.buttonDisabled]}
+                  onPress={handleConvertToOrder}
+                  disabled={converting}
+                >
+                  <Text style={styles.buttonText}>
+                    {converting ? 'Creating…' : 'Convert to sales order'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
           </>
         ) : (
           <Text style={styles.error}>Quotation not found.</Text>
@@ -262,6 +342,8 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   printButton: { backgroundColor: '#0f172a' },
+  orderButton: { backgroundColor: '#16a34a' },
+  buttonDisabled: { opacity: 0.6 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   approvalRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
   approveButton: { backgroundColor: '#16a34a', flex: 1, marginBottom: 0 },

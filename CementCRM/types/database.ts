@@ -107,3 +107,37 @@ export interface QuotationItem {
   unit_price: number | string;
   created_at: string;
 }
+
+export type SalesOrderStatus = 'confirmed' | 'delivery_planned' | 'dispatched' | 'delivered';
+
+export const SALES_ORDER_STATUS_LABELS: Record<SalesOrderStatus, string> = {
+  confirmed: 'Confirmed',
+  delivery_planned: 'Delivery planned',
+  dispatched: 'Dispatched',
+  delivered: 'Delivered',
+};
+
+export interface SalesOrder {
+  id: string;
+  lead_id: string;
+  quotation_id: string;
+  account_id: string;
+  status: SalesOrderStatus;
+  delivery_date: string | null;
+  delivery_address: string | null;
+  vehicle_info: string | null;
+  driver_info: string | null;
+  dispatched_at: string | null;
+  delivered_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SalesOrderItem {
+  id: string;
+  sales_order_id: string;
+  product_id: string | null;
+  quantity: number | string;
+  unit_price: number | string;
+}

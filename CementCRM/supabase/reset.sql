@@ -14,6 +14,9 @@ drop trigger if exists quotations_protect_approval on public.quotations;
 drop trigger if exists lead_items_set_updated_at on public.lead_items;
 drop trigger if exists quotations_block_duplicate_pending on public.quotations;
 drop trigger if exists lead_items_block_when_closed on public.lead_items;
+drop trigger if exists sales_orders_set_updated_at on public.sales_orders;
+drop trigger if exists sales_orders_on_created on public.sales_orders;
+drop trigger if exists sales_order_items_block_when_locked on public.sales_order_items;
 
 drop policy if exists "product_images_public_read" on storage.objects;
 drop policy if exists "product_images_manager_write" on storage.objects;
@@ -21,6 +24,8 @@ drop policy if exists "product_images_manager_update" on storage.objects;
 drop policy if exists "product_images_manager_delete" on storage.objects;
 delete from storage.buckets where id = 'product-images';
 
+drop table if exists public.sales_order_items cascade;
+drop table if exists public.sales_orders cascade;
 drop table if exists public.lead_items cascade;
 drop table if exists public.quotation_items cascade;
 drop table if exists public.quotations cascade;
@@ -39,3 +44,5 @@ drop function if exists public.protect_quotation_approval();
 drop function if exists public.block_duplicate_pending_quotation();
 drop function if exists public.block_lead_items_when_closed();
 drop function if exists public.lead_is_closed(uuid);
+drop function if exists public.on_sales_order_created();
+drop function if exists public.block_sales_order_items_when_locked();

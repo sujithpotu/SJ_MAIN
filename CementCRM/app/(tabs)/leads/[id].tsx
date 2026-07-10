@@ -118,6 +118,7 @@ export default function LeadDetailScreen() {
             <QuotationsSection
               leadId={lead.id}
               account={{
+                id: lead.account_id,
                 name: lead.account?.name ?? 'Unknown account',
                 location: lead.account?.location ?? null,
                 contact_person: lead.account?.contact_person ?? null,
