@@ -61,7 +61,12 @@ export function ProductForm({
       if (file && productId) {
         try {
           const path = await uploadProductImage(file, productId);
-          await setProductImage(productId, path);
+          const imageResult = await setProductImage(productId, path);
+          if (imageResult.error) {
+            setError(`Saved, but image upload failed: ${imageResult.error}`);
+            router.refresh();
+            return;
+          }
         } catch (err: unknown) {
           setError(`Saved, but image upload failed: ${err instanceof Error ? err.message : err}`);
           router.refresh();
