@@ -44,7 +44,7 @@ export default async function LeadDetailPage({
       .single(),
     supabase
       .from("lead_items")
-      .select("id, product_id, quantity, unit_price, product:products(name)")
+      .select("id, product_id, quantity, unit_price, product:products(name, image_path)")
       .eq("lead_id", id),
     supabase
       .from("quotations")
@@ -83,6 +83,7 @@ export default async function LeadDetailPage({
     quantity: String(item.quantity),
     unit_price: String(item.unit_price),
     productName: item.product?.name ?? "Unknown product",
+    imagePath: (item.product?.image_path as string | null) ?? null,
   }));
 
   const quotations: QuotationRow[] = ((quotationsRes.data as unknown as RawQuotation[]) ?? []).map(

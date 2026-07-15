@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductPickerDialog, type PickableProduct } from "@/components/products/product-picker-dialog";
 import { formatCurrency } from "@/lib/format";
+import { productImageUrl } from "@/lib/product-images";
 import { addLeadItem, removeLeadItem, updateLeadItem } from "@/app/(dashboard)/leads/actions";
 
 interface ItemRow {
@@ -14,6 +15,7 @@ interface ItemRow {
   quantity: string;
   unit_price: string;
   productName: string;
+  imagePath: string | null;
 }
 
 export function LeadItemsEditor({
@@ -68,8 +70,16 @@ export function LeadItemsEditor({
         <p className="text-sm text-muted-foreground">No products yet.</p>
       )}
 
-      {items.map((item) => (
+      {items.map((item) => {
+        const imageUrl = productImageUrl(item.imagePath);
+        return (
         <div key={item.id} className="flex items-center gap-2 rounded-md border p-2">
+          {imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt="" className="h-8 w-8 flex-shrink-0 rounded object-cover bg-muted" />
+          ) : (
+            <div className="h-8 w-8 flex-shrink-0 rounded bg-muted" />
+          )}
           <span className="flex-1 text-sm font-medium">{item.productName}</span>
           <Input
             type="number"
@@ -124,7 +134,8 @@ export function LeadItemsEditor({
             </Button>
           )}
         </div>
-      ))}
+        );
+      })}
 
       {items.length > 0 && (
         <p className="text-right text-sm font-semibold">Total: {formatCurrency(total)}</p>
@@ -147,6 +158,7 @@ export function LeadItemsEditor({
                   quantity: "1",
                   unit_price: String(product.price),
                   productName: product.name,
+                  imagePath: product.image_path,
                 },
               ]);
             }
