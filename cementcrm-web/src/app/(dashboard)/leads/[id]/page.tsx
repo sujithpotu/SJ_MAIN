@@ -37,7 +37,11 @@ export default async function LeadDetailPage({
     user
       ? supabase.from("profiles").select("role").eq("id", user.id).single()
       : Promise.resolve({ data: null }),
-    supabase.from("leads").select("*, account:accounts(name)").eq("id", id).single(),
+    supabase
+      .from("leads")
+      .select("*, account:accounts(name, location, contact_person, phone)")
+      .eq("id", id)
+      .single(),
     supabase
       .from("lead_items")
       .select("id, product_id, quantity, unit_price, product:products(name)")
@@ -51,7 +55,16 @@ export default async function LeadDetailPage({
       .order("created_at", { ascending: false }),
   ]);
 
-  const lead = leadRes.data as (Lead & { account: { name: string } | null }) | null;
+  const lead = leadRes.data as
+    | (Lead & {
+        account: {
+          name: string;
+          location: string | null;
+          contact_person: string | null;
+          phone: string | null;
+        } | null;
+      })
+    | null;
 
   if (leadRes.error || !lead) {
     return (
@@ -80,6 +93,10 @@ export default async function LeadDetailPage({
       notes: q.notes,
       created_at: q.created_at,
       accountName: lead.account?.name ?? "Unknown account",
+      accountLocation: lead.account?.location ?? null,
+      accountContact: lead.account?.contact_person ?? null,
+      accountPhone: lead.account?.phone ?? null,
+      expectedOrderDate: lead.expected_order_date,
       items: q.quotation_items.map((item) => ({
         id: item.id,
         productName: item.product?.name ?? "Unknown product",

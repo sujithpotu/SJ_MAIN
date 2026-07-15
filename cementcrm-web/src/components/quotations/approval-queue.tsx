@@ -22,8 +22,14 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { buildQuotationHtml } from "@/lib/quotation-html";
+import { printHtml } from "@/lib/print";
 import { QUOTATION_STATUS_LABELS, type QuotationStatus } from "@/types/database";
-import { convertToSalesOrder, reviewQuotation } from "@/app/(dashboard)/quotations/actions";
+import {
+  convertToSalesOrder,
+  markQuotationSent,
+  reviewQuotation,
+} from "@/app/(dashboard)/quotations/actions";
 
 export interface QuotationRow {
   id: string;
@@ -32,6 +38,10 @@ export interface QuotationRow {
   notes: string | null;
   created_at: string;
   accountName: string;
+  accountLocation: string | null;
+  accountContact: string | null;
+  accountPhone: string | null;
+  expectedOrderDate: string | null;
   items: { id: string; productName: string; quantity: number; unitPrice: number }[];
 }
 
@@ -57,6 +67,7 @@ export function ApprovalQueue({
   const [error, setError] = useState<string | null>(null);
   const [existingOrderId, setExistingOrderId] = useState<string | null>(null);
   const [converting, setConverting] = useState(false);
+  const [printing, setPrinting] = useState(false);
 
   const total = (q: QuotationRow) =>
     q.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
@@ -86,6 +97,35 @@ export function ApprovalQueue({
       return;
     }
     if (result.orderId) router.push(`/orders/${result.orderId}`);
+  };
+
+  const handlePrint = async () => {
+    if (!active) return;
+    setPrinting(true);
+    setError(null);
+    const html = buildQuotationHtml({
+      accountName: active.accountName,
+      accountLocation: active.accountLocation,
+      accountContact: active.accountContact,
+      accountPhone: active.accountPhone,
+      expectedOrderDate: active.expectedOrderDate,
+      items: active.items.map((item) => ({
+        productName: item.productName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      })),
+    });
+    printHtml(html);
+    if (active.status !== "sent") {
+      const result = await markQuotationSent(active.id);
+      if (result.error) {
+        setError(result.error);
+        setPrinting(false);
+        return;
+      }
+      router.refresh();
+    }
+    setPrinting(false);
   };
 
   const handleReview = (status: "approved" | "rejected") => {
@@ -209,6 +249,18 @@ export function ApprovalQueue({
                 <p className="text-sm text-muted-foreground">
                   Waiting for manager approval.
                 </p>
+              )}
+
+              {active.status !== "pending_approval" && active.status !== "rejected" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={printing}
+                  onClick={handlePrint}
+                  className="w-fit"
+                >
+                  {printing ? "Preparing…" : active.status === "sent" ? "Print again" : "Print & mark as sent"}
+                </Button>
               )}
 
               {(active.status === "approved" || active.status === "sent") && (

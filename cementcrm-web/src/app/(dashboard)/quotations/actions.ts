@@ -30,6 +30,27 @@ export async function reviewQuotation(
   return { error: null };
 }
 
+export async function markQuotationSent(quotationId: string) {
+  const supabase = await createClient();
+  const { data: quotation } = await supabase
+    .from("quotations")
+    .select("lead_id")
+    .eq("id", quotationId)
+    .single();
+
+  const { error } = await supabase
+    .from("quotations")
+    .update({ status: "sent" })
+    .eq("id", quotationId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/quotations");
+  revalidatePath("/");
+  if (quotation) revalidatePath(`/leads/${quotation.lead_id}`);
+  return { error: null };
+}
+
 export async function convertToSalesOrder(quotationId: string) {
   const supabase = await createClient();
 
