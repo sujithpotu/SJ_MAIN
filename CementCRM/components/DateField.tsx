@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { createElement, useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -18,6 +18,22 @@ function toDateString(date: Date): string {
 export function DateField({ label, value, onChange }: Props) {
   const dateValue = value ? new Date(`${value}T00:00:00`) : new Date();
   const [showPicker, setShowPicker] = useState(false);
+
+  // @react-native-community/datetimepicker has no web implementation at all
+  // (it renders null there), so use a plain HTML date input instead.
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.wrapper}>
+        <Text style={styles.label}>{label}</Text>
+        {createElement('input', {
+          type: 'date',
+          value: value || '',
+          onChange: (e: { target: { value: string } }) => onChange(e.target.value),
+          style: webInputStyle,
+        })}
+      </View>
+    );
+  }
 
   // iOS "compact" is a persistent native pill that opens its own popover —
   // just render it directly, no manual open/close state needed.
@@ -70,6 +86,20 @@ export function DateField({ label, value, onChange }: Props) {
     </View>
   );
 }
+
+// Plain CSS-in-JS object (not StyleSheet.create) since this styles a raw
+// DOM <input>, not an RN component.
+const webInputStyle = {
+  backgroundColor: '#f8fafc',
+  border: '1px solid #e2e8f0',
+  borderRadius: 10,
+  padding: '12px 14px',
+  fontSize: 15,
+  color: '#0f172a',
+  fontFamily: 'inherit',
+  width: '100%',
+  boxSizing: 'border-box' as const,
+};
 
 const styles = StyleSheet.create({
   wrapper: { marginBottom: 16 },
