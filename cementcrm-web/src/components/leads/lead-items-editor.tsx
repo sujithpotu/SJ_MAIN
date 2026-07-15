@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PickerDialog, type PickerItem } from "@/components/picker-dialog";
+import { ProductPickerDialog, type PickableProduct } from "@/components/products/product-picker-dialog";
 import { formatCurrency } from "@/lib/format";
 import { addLeadItem, removeLeadItem, updateLeadItem } from "@/app/(dashboard)/leads/actions";
 
@@ -26,7 +26,7 @@ export function LeadItemsEditor({
   locked?: boolean;
 }) {
   const [items, setItems] = useState(initialItems);
-  const [products, setProducts] = useState<(PickerItem & { price: number })[]>([]);
+  const [products, setProducts] = useState<PickableProduct[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -34,11 +34,16 @@ export function LeadItemsEditor({
     const supabase = createClient();
     supabase
       .from("products")
-      .select("id, name, price")
+      .select("id, name, price, image_path")
       .order("name")
       .then(({ data }) => {
         setProducts(
-          (data ?? []).map((p) => ({ id: p.id, title: p.name, price: Number(p.price) }))
+          (data ?? []).map((p) => ({
+            id: p.id,
+            name: p.name,
+            price: Number(p.price),
+            image_path: p.image_path,
+          }))
         );
       });
   }, []);
@@ -125,13 +130,11 @@ export function LeadItemsEditor({
         <p className="text-right text-sm font-semibold">Total: {formatCurrency(total)}</p>
       )}
 
-      <PickerDialog
+      <ProductPickerDialog
         open={pickerOpen}
         onOpenChange={setPickerOpen}
-        title="Select product"
-        items={products}
-        onSelect={(item) => {
-          const product = products.find((p) => p.id === item.id)!;
+        products={products}
+        onSelect={(product) => {
           setPickerOpen(false);
           startTransition(async () => {
             const result = await addLeadItem(leadId, product.id, product.price);
@@ -143,7 +146,7 @@ export function LeadItemsEditor({
                   product_id: product.id,
                   quantity: "1",
                   unit_price: String(product.price),
-                  productName: product.title,
+                  productName: product.name,
                 },
               ]);
             }
