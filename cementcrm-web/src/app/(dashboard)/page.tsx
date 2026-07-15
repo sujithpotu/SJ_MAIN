@@ -7,15 +7,20 @@ import { LEAD_STAGES, type LeadStage } from "@/types/database";
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  const [accountsRes, leadsRes, pendingQuotationsRes, ordersRes] = await Promise.all([
-    supabase.from("accounts").select("status"),
-    supabase.from("leads").select("stage"),
-    supabase.from("quotations").select("id", { count: "exact", head: true }).eq(
-      "status",
-      "pending_approval"
-    ),
-    supabase.from("sales_orders").select("status"),
-  ]);
+  const [accountsRes, leadsRes, pendingQuotationsRes, ordersRes, openComplaintsRes] =
+    await Promise.all([
+      supabase.from("accounts").select("status"),
+      supabase.from("leads").select("stage"),
+      supabase.from("quotations").select("id", { count: "exact", head: true }).eq(
+        "status",
+        "pending_approval"
+      ),
+      supabase.from("sales_orders").select("status"),
+      supabase
+        .from("complaints")
+        .select("id", { count: "exact", head: true })
+        .in("status", ["open", "in_progress"]),
+    ]);
 
   const accounts = accountsRes.data ?? [];
   const leads = leadsRes.data ?? [];
@@ -45,7 +50,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -95,6 +100,20 @@ export default async function DashboardPage() {
           <CardContent>
             <p className="text-2xl font-bold">{ordersInFlight}</p>
             <p className="text-xs text-muted-foreground">{orders.length} total orders</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Open complaints
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{openComplaintsRes.count ?? 0}</p>
+            <Link href="/complaints" className="text-xs text-primary hover:underline">
+              View complaints →
+            </Link>
           </CardContent>
         </Card>
       </div>

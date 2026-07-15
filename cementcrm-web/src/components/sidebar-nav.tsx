@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/quotations", label: "Quotations" },
   { href: "/products", label: "Products" },
   { href: "/orders", label: "Orders" },
+  { href: "/complaints", label: "Complaints" },
 ];
 
 export function SidebarNav() {

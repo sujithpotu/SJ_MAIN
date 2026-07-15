@@ -141,3 +141,54 @@ export interface SalesOrderItem {
   quantity: number | string;
   unit_price: number | string;
 }
+
+export type ComplaintType = 'quality' | 'delivery' | 'billing' | 'sales' | 'other';
+
+export const COMPLAINT_TYPES: { value: ComplaintType; label: string }[] = [
+  { value: 'quality', label: 'Quality' },
+  { value: 'delivery', label: 'Delivery' },
+  { value: 'billing', label: 'Billing' },
+  { value: 'sales', label: 'Sales' },
+  { value: 'other', label: 'Other' },
+];
+
+export type ComplaintSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+export const COMPLAINT_SEVERITIES: { value: ComplaintSeverity; label: string }[] = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'critical', label: 'Critical' },
+];
+
+export type ComplaintStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+
+export const COMPLAINT_STATUSES: ComplaintStatus[] = ['open', 'in_progress', 'resolved', 'closed'];
+
+export const COMPLAINT_STATUS_LABELS: Record<ComplaintStatus, string> = {
+  open: 'Open',
+  in_progress: 'In progress',
+  resolved: 'Resolved',
+  closed: 'Closed',
+};
+
+export interface Complaint {
+  id: string;
+  complaint_number: string;
+  account_id: string;
+  sales_order_id: string | null;
+  product_id: string | null;
+  type: ComplaintType;
+  severity: ComplaintSeverity;
+  status: ComplaintStatus;
+  batch_or_truck_ref: string | null;
+  description: string;
+  root_cause: string | null;
+  corrective_action: string | null;
+  assigned_to: string | null;
+  created_by: string | null;
+  resolved_at: string | null;
+  closed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
