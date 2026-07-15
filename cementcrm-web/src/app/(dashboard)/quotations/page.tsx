@@ -6,7 +6,7 @@ interface RawQuotation {
   status: QuotationRow["status"];
   notes: string | null;
   created_at: string;
-  lead: { account: { name: string } | null } | null;
+  lead: { id: string; account: { name: string } | null } | null;
   quotation_items: {
     id: string;
     quantity: number;
@@ -29,7 +29,7 @@ export default async function QuotationsPage() {
     supabase
       .from("quotations")
       .select(
-        "id, status, notes, created_at, lead:leads(account:accounts(name)), quotation_items(id, quantity, unit_price, product:products(name))"
+        "id, status, notes, created_at, lead:leads(id, account:accounts(name)), quotation_items(id, quantity, unit_price, product:products(name))"
       )
       .order("created_at", { ascending: false }),
   ]);
@@ -39,6 +39,7 @@ export default async function QuotationsPage() {
 
   const quotations: QuotationRow[] = raw.map((q) => ({
     id: q.id,
+    leadId: q.lead?.id ?? "",
     status: q.status,
     notes: q.notes,
     created_at: q.created_at,

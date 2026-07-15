@@ -9,6 +9,8 @@ const LINKS = [
   { href: "/accounts", label: "Accounts" },
   { href: "/leads", label: "Leads" },
   { href: "/quotations", label: "Quotations" },
+  { href: "/products", label: "Products" },
+  { href: "/orders", label: "Orders" },
 ];
 
 export function SidebarNav() {

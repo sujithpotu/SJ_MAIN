@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import {
   Table,
   TableBody,
@@ -21,10 +23,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { QUOTATION_STATUS_LABELS, type QuotationStatus } from "@/types/database";
-import { reviewQuotation } from "@/app/(dashboard)/quotations/actions";
+import { convertToSalesOrder, reviewQuotation } from "@/app/(dashboard)/quotations/actions";
 
 export interface QuotationRow {
   id: string;
+  leadId: string;
   status: QuotationStatus;
   notes: string | null;
   created_at: string;
@@ -47,13 +50,43 @@ export function ApprovalQueue({
   quotations: QuotationRow[];
   isManager: boolean;
 }) {
+  const router = useRouter();
   const [active, setActive] = useState<QuotationRow | null>(null);
   const [comment, setComment] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [existingOrderId, setExistingOrderId] = useState<string | null>(null);
+  const [converting, setConverting] = useState(false);
 
   const total = (q: QuotationRow) =>
     q.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+
+  useEffect(() => {
+    if (!active || (active.status !== "approved" && active.status !== "sent")) {
+      setExistingOrderId(null);
+      return;
+    }
+    const supabase = createClient();
+    supabase
+      .from("sales_orders")
+      .select("id")
+      .eq("lead_id", active.leadId)
+      .maybeSingle()
+      .then(({ data }) => setExistingOrderId(data?.id ?? null));
+  }, [active]);
+
+  const handleConvert = async () => {
+    if (!active) return;
+    setConverting(true);
+    setError(null);
+    const result = await convertToSalesOrder(active.id);
+    setConverting(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    if (result.orderId) router.push(`/orders/${result.orderId}`);
+  };
 
   const handleReview = (status: "approved" | "rejected") => {
     if (!active) return;
@@ -66,6 +99,7 @@ export function ApprovalQueue({
       }
       setActive(null);
       setComment("");
+      router.refresh();
     });
   };
 
@@ -147,6 +181,8 @@ export function ApprovalQueue({
                 <p className="rounded-md bg-muted p-3 text-sm">{active.notes}</p>
               )}
 
+              {error && <p className="text-sm text-destructive">{error}</p>}
+
               {active.status === "pending_approval" && isManager && (
                 <>
                   <Textarea
@@ -154,7 +190,6 @@ export function ApprovalQueue({
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                   />
-                  {error && <p className="text-sm text-destructive">{error}</p>}
                   <DialogFooter>
                     <Button
                       variant="destructive"
@@ -174,6 +209,20 @@ export function ApprovalQueue({
                 <p className="text-sm text-muted-foreground">
                   Waiting for manager approval.
                 </p>
+              )}
+
+              {(active.status === "approved" || active.status === "sent") && (
+                <DialogFooter>
+                  {existingOrderId ? (
+                    <Button onClick={() => router.push(`/orders/${existingOrderId}`)}>
+                      View sales order
+                    </Button>
+                  ) : (
+                    <Button disabled={converting} onClick={handleConvert}>
+                      {converting ? "Creating…" : "Convert to sales order"}
+                    </Button>
+                  )}
+                </DialogFooter>
               )}
             </>
           )}

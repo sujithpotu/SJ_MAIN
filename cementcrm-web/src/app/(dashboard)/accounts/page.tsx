@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -38,11 +40,16 @@ export default async function AccountsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Accounts</h1>
-        <p className="text-sm text-muted-foreground">
-          Dealers, contractors, RMC plants, and project sites.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Accounts</h1>
+          <p className="text-sm text-muted-foreground">
+            Dealers, contractors, RMC plants, and project sites.
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/accounts/new">New account</Link>
+        </Button>
       </div>
 
       {error && <p className="text-sm text-destructive">{error.message}</p>}
@@ -62,8 +69,12 @@ export default async function AccountsPage() {
           </TableHeader>
           <TableBody>
             {accounts.map((account) => (
-              <TableRow key={account.id}>
-                <TableCell className="font-medium">{account.name}</TableCell>
+              <TableRow key={account.id} className="cursor-pointer">
+                <TableCell className="font-medium p-0">
+                  <Link href={`/accounts/${account.id}`} className="block px-2 py-2">
+                    {account.name}
+                  </Link>
+                </TableCell>
                 <TableCell>{typeLabel(account.type)}</TableCell>
                 <TableCell>{account.location ?? "—"}</TableCell>
                 <TableCell>{account.contact_person ?? "—"}</TableCell>

@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -41,11 +43,16 @@ export default async function LeadsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Leads</h1>
-        <p className="text-sm text-muted-foreground">
-          Full pipeline from New Lead through Won/Lost.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Leads</h1>
+          <p className="text-sm text-muted-foreground">
+            Full pipeline from New Lead through Won/Lost.
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/leads/new">New lead</Link>
+        </Button>
       </div>
 
       {error && <p className="text-sm text-destructive">{error.message}</p>}
@@ -67,9 +74,11 @@ export default async function LeadsPage() {
                 0
               );
               return (
-                <TableRow key={lead.id}>
-                  <TableCell className="font-medium">
-                    {lead.account?.name ?? "Unknown account"}
+                <TableRow key={lead.id} className="cursor-pointer">
+                  <TableCell className="font-medium p-0">
+                    <Link href={`/leads/${lead.id}`} className="block px-2 py-2">
+                      {lead.account?.name ?? "Unknown account"}
+                    </Link>
                   </TableCell>
                   <TableCell>
                     <Badge variant={STAGE_VARIANT[lead.stage]}>{lead.stage}</Badge>
