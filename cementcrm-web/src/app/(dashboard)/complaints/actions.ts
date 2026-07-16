@@ -92,3 +92,45 @@ export async function deleteComplaint(id: string) {
   revalidatePath("/complaints");
   redirect("/complaints");
 }
+
+export async function addComplaintAttachment(
+  complaintId: string,
+  filePath: string,
+  fileName: string,
+  contentType: string | null
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data, error } = await supabase
+    .from("complaint_attachments")
+    .insert({
+      complaint_id: complaintId,
+      file_path: filePath,
+      file_name: fileName,
+      content_type: contentType,
+      uploaded_by: user?.id,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) return { error: error?.message ?? "Unknown error", id: null };
+  revalidatePath(`/complaints/${complaintId}`);
+  return { error: null, id: data.id as string };
+}
+
+export async function removeComplaintAttachment(
+  attachmentId: string,
+  complaintId: string,
+  filePath: string
+) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("complaint_attachments").delete().eq("id", attachmentId);
+  if (error) return { error: error.message };
+
+  await supabase.storage.from("complaint-attachments").remove([filePath]);
+  revalidatePath(`/complaints/${complaintId}`);
+  return { error: null };
+}

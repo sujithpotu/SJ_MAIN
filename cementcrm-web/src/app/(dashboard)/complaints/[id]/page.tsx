@@ -1,11 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { ComplaintDetailForm } from "@/components/complaints/complaint-detail-form";
+import { ComplaintAttachments } from "@/components/complaints/complaint-attachments";
 import { ComplaintTimeline } from "@/components/complaints/complaint-timeline";
 import { DeleteComplaintButton } from "@/components/complaints/complaint-actions";
 import { formatDate } from "@/lib/format";
 import { updateComplaint } from "../actions";
-import { COMPLAINT_STATUS_LABELS, type Complaint, type ComplaintStatus } from "@/types/database";
+import {
+  COMPLAINT_STATUS_LABELS,
+  type Complaint,
+  type ComplaintAttachment,
+  type ComplaintStatus,
+} from "@/types/database";
 
 interface ComplaintWithJoins extends Complaint {
   account: { name: string } | null;
@@ -35,13 +41,22 @@ export default async function ComplaintDetailPage({
     ? await supabase.from("profiles").select("role").eq("id", user.id).single()
     : { data: null };
 
-  const { data: complaint, error } = await supabase
-    .from("complaints")
-    .select(
-      "*, account:accounts(name), product:products(name), assigned:profiles!assigned_to(full_name)"
-    )
-    .eq("id", id)
-    .single();
+  const [complaintRes, attachmentsRes] = await Promise.all([
+    supabase
+      .from("complaints")
+      .select(
+        "*, account:accounts(name), product:products(name), assigned:profiles!assigned_to(full_name)"
+      )
+      .eq("id", id)
+      .single(),
+    supabase
+      .from("complaint_attachments")
+      .select("*")
+      .eq("complaint_id", id)
+      .order("created_at", { ascending: true }),
+  ]);
+
+  const { data: complaint, error } = complaintRes;
 
   if (error || !complaint) {
     return (
@@ -50,6 +65,7 @@ export default async function ComplaintDetailPage({
   }
 
   const c = complaint as unknown as ComplaintWithJoins;
+  const attachments = (attachmentsRes.data as ComplaintAttachment[]) ?? [];
   const isManager = profile?.role === "manager";
   const updateWithId = updateComplaint.bind(null, id);
 
@@ -73,6 +89,8 @@ export default async function ComplaintDetailPage({
           <p className="text-xs text-muted-foreground">Ref: {c.batch_or_truck_ref}</p>
         )}
       </div>
+
+      <ComplaintAttachments complaintId={id} initialAttachments={attachments} />
 
       <ComplaintDetailForm
         complaint={c}

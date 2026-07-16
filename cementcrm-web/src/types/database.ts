@@ -192,3 +192,13 @@ export interface Complaint {
   created_at: string;
   updated_at: string;
 }
+
+export interface ComplaintAttachment {
+  id: string;
+  complaint_id: string;
+  file_path: string;
+  file_name: string;
+  content_type: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
